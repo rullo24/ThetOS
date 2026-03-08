@@ -6,7 +6,7 @@ An investigation into compile-time safety invariants and zero-cost modularity fo
 
 ## 📑 Thesis Problem Statement
 
-> Current industry-standard RTOS architectures (typically C-based) lack the ability to enforce memory safety and hardware-state invariants at compile-time, resulting in runtime failures that are difficult to detect and debug. This thesis seeks to prove that a modular RTOS developed in Rust, utilising static dispatch and the typestate pattern, can eliminate these failure modes at the compilation stage without incurring a performance penalty compared to a C-based equivalent.
+> Current industry-standard RTOS architectures (typically C-based) lack the ability to enforce memory safety and hardware-state invariants at compile-time, resulting in runtime failures that are difficult to detect and debug. This thesis seeks to prove that a modular RTOS developed in Rust, utilising static dispatch and the typestate pattern, can eliminate these failure modes at the compilation stage without incurring a noticable performance penalty compared to a C-based equivalent.
 
 ---
 
@@ -26,6 +26,71 @@ The system is organised as a **Cargo Workspace** to enforce strict compile-time 
 ├── scripts/                  # TOOLING: Linker scripts & debug configurations
 └── examples/                 # PROOF: Sample applications for validation
 ```
+
+## Developer Workflow & Configuration
+
+ThetOS is designed for **Declarative Configuration**. To minimise "Silent Failures" the developer is shielded from the internal complexity of the `arch/` and `kernel/` crates. Configuration is centralised into two specific files:
+
+### 1. The Build Target (`/.cargo/config.toml`)
+**Role:** Defines **"Where"** the code is going.  
+This file contains the "Hardware Metadata" -> the target architecture (e.g., `thumbv7m.main-none-eabihf` for your Cortex-M33) and the link to the memory map. Once established for a specific board, this file remains **static**.
+
+### 2. The Feature Manifest (`/Cargo.toml`)
+**Role:** Defines **"What"** the hardware is capable of.  
+The developer interacts exclusively with the root `Cargo.toml` to toggle system-wide capabilities. Using Rust's **Feature Bubbling**, selecting a feature at the root (e.g., `fpu`) automatically triggers the corresponding low-level assembly in the `arch/` layer.
+
+> **Key Advantage:** The developer never modifies the RTOS source code to suit their hardware. By simply "declaring" the hardware features in the manifest, the compiler automatically reconfigures the context-switching logic and peripheral drivers at build-time. Too easy.
+
+---
+
+## Module Breakdown
+
+### 1. `specs/` (The Formal Contract)
+Defines the **Traits** (interfaces) that serve as the "law" for the system.
+* **Purpose:** Formalises behaviours for `ContextSwitch`, `InterruptController`, and `SystemTimer`.
+* **Thesis Relevance:** Demonstrates **Interface Segregation**, ensuring the kernel remains hardware-agnostic.
+
+### 2. `kernel/` (The Core Orchestrator)
+The hardware-independent kernel logic.
+* **Purpose:** Manages task scheduling (Ready-lists), synchronisation primitives, and lifecycle management.
+* **Thesis Relevance:** Central site for proving that scheduling logic can be safely decoupled from register-level manipulation.
+
+### 3. `arch/` (Architecture-Specific Ports)
+Low-level implementations for specific CPU instruction sets (e.g., ARM Cortex-M, RISC-V).
+* **Purpose:** Manages stack frame initialisation, register saving/restoring, and atomic operations.
+* **Thesis Relevance:** Isolates the "unsafe" code required for context switching from the safe modular kernel.
+
+### 4. `drivers/` (Modular System Services)
+Standardised, swappable peripheral modules.
+* **Purpose:** Provides implementations for serial consoles and system timers that adhere to `specs/`.
+* **Thesis Relevance:** Validates the **Typestate Pattern** by enforcing peripheral state machine safety (e.g., preventing a write to an uninitialised UART).
+
+### 5. `boards/` (System Integration & BSP)
+The "Glue" layer defining the physical system configuration.
+* **Purpose:** Maps specific pins to kernel functions and defines memory boundaries (SRAM/Flash).
+* **Thesis Relevance:** Proves **System Composition** by allowing the same kernel to be deployed across diverse hardware targets.
+
+---
+
+## Design Philosophy
+
+### Static Dispatch for Real-Time Rigour
+To ensure deterministic execution, the RTOS avoids dynamic dispatch (`dyn Trait`) and virtual tables. Utilising **Monomorphisation**, the compiler inlines implementations at the call site, matching the performance of hand-optimised C.
+
+[Image of Rust monomorphisation process during compilation]
+
+### Compile-Time Invariant Enforcement
+By encoding hardware states into the type system (Typestates), the RTOS transforms common runtime logic errors into build-time failures. This ensures that the system is "Correct by Construction".
+
+[Image of Rust typestate pattern state machine for GPIO pins]
+
+---
+
+## Evaluation Metrics
+The project will be empirically validated against the following criteria:
+1. **Safety
+
+## Module Breakdown
 
 ### 1. `specs/` (The Formal Contract)
 Defines the **Traits** (interfaces) that serve as the "law" for the system.
