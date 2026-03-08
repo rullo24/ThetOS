@@ -1,0 +1,13 @@
+#################################################################################
+### Responsible for configuring the build process for the target architecture ###
+#################################################################################
+
+[build]
+target = "thumbv7em-none-eabihf" 
+
+# This passes flags to linker to ensure custom memory layout
+[target.thumbv7em-none-eabihf]
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+  "-C", "no-stack-check",
+]

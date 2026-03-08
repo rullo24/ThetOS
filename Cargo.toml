@@ -1,0 +1,21 @@
+###########################################################
+### Responsible for linking all crates in the workspace ###
+###########################################################
+
+[workspace]
+resolver = "2"
+members = [
+    "kernel", 
+    "specs", 
+    "arch/arm-cortex-m", 
+    "drivers/uart", 
+    "boards/nucleo-f401re"
+]
+
+# define 'arch' alias based on what we are building for
+[workspace.dependencies]
+[target.'cfg(all(target_arch = "arm", target_os = "none"))'.dependencies]
+arch = { path = "arch/arm-cortex-m" }
+
+[target.'cfg(target_arch = "riscv32")'.dependencies]
+arch = { path = "arch/riscv" }
