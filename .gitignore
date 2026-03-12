@@ -5,6 +5,24 @@ ds/*
 /target
 Cargo.lock
 
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Unit test / coverage reports
+.pytest_cache/
+.mypy_cache/
+.coverage
+
 # --- macOS Metadata ---
 .DS_Store
 .AppleDouble
