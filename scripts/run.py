@@ -44,12 +44,20 @@ def main() -> None:
             build_cmd.append("--release")
         result = subprocess.run(build_cmd, cwd=root)
         if result.returncode != 0:
+            print(f"Failed to build {args.package}", file=sys.stderr)
             sys.exit(result.returncode)
+        else:
+            print(f"Built {args.package}", sys.stdout)
 
     flash_cmd = [sys.executable, str(flash_py), "-p", args.package]
     if args.release:
         flash_cmd.append("--release")
     result = subprocess.run(flash_cmd, cwd=root)
+    if result.returncode != 0:
+        print(f"Failed to flash {args.package}", file=sys.stderr)
+        sys.exit(result.returncode)
+    else:
+        print(f"Flashed {args.package}", sys.stdout)
     sys.exit(result.returncode)
 
 
