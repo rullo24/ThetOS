@@ -8,6 +8,16 @@ An investigation into compile-time safety invariants and zero-cost modularity fo
 
 > Current industry-standard RTOS architectures (typically C-based) lack the ability to enforce memory safety and hardware-state invariants at compile-time, resulting in runtime failures that are difficult to detect and debug. This thesis seeks to prove that a modular RTOS developed in Rust, utilising static dispatch and the typestate pattern, can eliminate these failure modes at the compilation stage without incurring a noticeable performance penalty compared to a C-based equivalent.
 
+## Software Dependencies
+
+**Build (required for compiling):**
+* **Rust** — Install via [rustup](https://rustup.rs). The target triple (e.g. `thumbv7m-none-eabi`) is set in `.cargo/config.toml`; install it with `rustup target add <target>` before building (see [Building](#building)).
+* **Python 3.11+**
+
+**Flashing and debugging (optional; only if you flash or attach GDB to hardware):**
+* **OpenOCD** — Talks to the board over a compatible probe (e.g. ST-Link). Configure `[scripting]` in `.cargo/config.toml` with `openocd_interface` and `openocd_target` for your board.
+* **A GDB Install** — For `scripts/debug.py` (attach, load, breakpoints).
+
 ---
 
 ## 🛠 Technical Stack & Implementation Constraints
