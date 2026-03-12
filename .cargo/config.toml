@@ -10,5 +10,5 @@ rustflags = ["-C", "link-arg=-Tboards/nucleo/nucleo-l152re/memory.x"]
 
 [scripting]
 gdb_instance = "arm-none-eabi-gdb"
-openocd_interface = ""
-openocd_target = ""
+openocd_interface = "interface/stlink.cfg" # default for ST-Link (use /scripts/list_openocd.py to list available interfaces)
+openocd_target = "stm32l1.cfg" # chip series (use /scripts/list_openocd.py to list available targets)
