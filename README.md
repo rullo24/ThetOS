@@ -12,7 +12,7 @@ An investigation into compile-time safety invariants and zero-cost modularity fo
 
 ## 🛠 Technical Stack & Implementation Constraints
 To ensure the academic validity of the thesis, the following boundaries are established:
-* **Core Infrastructure:** Use `cortex-m` and `cortex-m-rt` for standard vector table and startup logic.
+* **Core Infrastructure:** Use the appropriate architecture runtime crates for the target (e.g. `cortex-m-rt` for ARM) for vector table and startup logic.
 * **Hardware Access:** Use Peripheral Access Crates (PAC) for raw register definitions only.
 * **Driver Layer:** **Manual Implementation.** High-level Hardware Abstraction Layers (HALs) are forbidden. All Typestate logic and Trait implementations must be original work to validate the safety claims of the thesis.
 * **Kernel Layer:** Hardware-blind and generic-first. No architecture-specific code allowed in the `kernel/` crate.
@@ -44,11 +44,11 @@ ThetOS is designed for **Declarative Configuration**. To minimise "Silent Failur
 
 ### 1. The Build Target (`/.cargo/config.toml`)
 **Role:** Defines **"Where"** the code is going.  
-This file contains the hardware metadata: the target architecture (e.g., `thumbv7em-none-eabihf` for ARM Cortex-M) and the link to the memory map. Once established for a specific board, this file remains **static**.
+This file contains the hardware metadata: the target triple for the chosen MCU and the path to the linker script (memory map). Once set for a given board, this file remains **static**.
 
 ### 2. The Feature Manifest (`/Cargo.toml`)
 **Role:** Defines **"What"** the hardware is capable of.  
-The developer interacts exclusively with the root `Cargo.toml` to toggle system-wide capabilities. Using Rust's **Feature Bubbling**, selecting a feature at the root (e.g., `fpu`) automatically triggers the corresponding low-level assembly in the `arch/` layer.
+The developer interacts exclusively with the root `Cargo.toml` to toggle system-wide capabilities. Using Rust's **Feature Bubbling**, selecting a feature at the root (e.g. a capability flag) automatically triggers the corresponding code paths in the `arch/` layer.
 
 > **Key Advantage:** The developer never modifies the RTOS source code to suit their hardware. By declaring the hardware features in the manifest, the compiler automatically reconfigures the context-switching logic and peripheral drivers at build-time.
 
@@ -67,7 +67,7 @@ The hardware-independent kernel logic.
 * **Thesis Relevance:** Central site for proving that scheduling logic can be safely decoupled from register-level manipulation.
 
 ### 3. `arch/` (Architecture-Specific Ports)
-Low-level implementations for specific CPU instruction sets (e.g., ARM Cortex-M, RISC-V).
+Low-level implementations for supported CPU instruction sets.
 * **Purpose:** Manages stack frame initialisation, register saving/restoring, and atomic operations.
 * **Thesis Relevance:** Isolates the "unsafe" code required for context switching from the safe modular kernel.
 
@@ -82,8 +82,7 @@ The "Matchmaker" layer defining the physical system configuration.
 * **Thesis Relevance:** Proves **System Composition** by allowing the same kernel to be deployed across diverse hardware targets.
 
 ### 6. `docs/` (Planning & Technical Specifications)
-Centralised repository for design documents used to support the final thesis report.
-* **`roadmap.md`:** Development phases, gatekeepers, and milestone summary.
+Centralised repository for design documents used to support the final thesis report (e.g. roadmap, architecture, safety invariants, benchmarking methodology).
 
 ---
 
