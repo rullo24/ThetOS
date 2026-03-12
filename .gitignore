@@ -1,3 +1,6 @@
+# --- Local datasheets ---
+ds/*
+
 # --- Rust / Cargo ---
 /target
 Cargo.lock
