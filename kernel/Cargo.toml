@@ -1,0 +1,8 @@
+###########################################################
+### Responsible for the kernel logic and scheduling logic ###
+###########################################################
+
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2021"

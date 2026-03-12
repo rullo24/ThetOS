@@ -4,10 +4,16 @@
 // INTERNAL DEPENDENCIES
 
 // EXTERNAL DEPENDENCIES
-use panic_halt as _; // a panic handler must be included (even if unused)
+use core::panic::PanicInfo;
 use cortex_m_rt::entry;
+
+#[panic_handler]
+#[inline(never)]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
+}
 
 #[entry]
 fn main() -> ! {
-    loop {} // infinite loop to keep program running
+    loop {} 
 }

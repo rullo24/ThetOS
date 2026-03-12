@@ -38,6 +38,19 @@ The system is organised as a **Cargo Workspace** to enforce strict compile-time 
 
 The phased development plan, gatekeepers, and milestones are defined in [docs/roadmap.md](docs/roadmap.md).
 
+## Building
+
+**Prerequisites:** Install the Rust toolchain (e.g. via [rustup](https://rustup.rs)). For embedded targets, install the required target before building (the target is set in `.cargo/config.toml`). For example, for ARM Cortex-M3:
+
+```bash
+rustup target add thumbv7m-none-eabi
+```
+
+**Build commands:**
+
+* **`cargo build`** — Builds only the RTOS library crates (kernel, specs, arch, drivers, boards). These are the crates listed in **`default-members`** in the root `Cargo.toml`. Add each new lib crate to both `members` and `default-members` as the project grows.
+* **`cargo build --workspace`** — Builds every crate in the workspace, including all examples. This uses the full **`members`** list in the root `Cargo.toml`. Ensure `members` lists every crate (libs and examples); add each new example or lib there.
+
 ## Developer Workflow & Configuration
 
 ThetOS is designed for **Declarative Configuration**. To minimise "Silent Failures" the developer is shielded from the internal complexity of the `arch/` and `kernel/` crates. Configuration is centralised into two specific files:

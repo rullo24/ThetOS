@@ -4,18 +4,30 @@
 
 [workspace]
 resolver = "2"
-members = [
-    "kernel", 
-    "specs", 
-    "arch/arm-cortex-m", 
-    "drivers/uart", 
-    "boards/nucleo-f401re"
+
+# Builds RTOS lib for target provided
+default-members = [
+    # "kernel",
+    # "specs",
+    # TODO: add drivers, arch and board specifics here
+    # "arch/*",             # add target architecture when ready
+    # "drivers/*",          # add target drivers when ready
+    # "boards/*",           # add target board when ready
 ]
 
-# define 'arch' alias based on what we are building for
-[workspace.dependencies]
-[target.'cfg(all(target_arch = "arm", target_os = "none"))'.dependencies]
-arch = { path = "arch/arm-cortex-m" }
+# Builds **EXAMPLES** using the RTOS lib
+members = [
+    "examples/phase0/no_rtos_blinky",
+    # "kernel",
+    # "specs",
+    # TODO: add drivers, arch and board specifics here
+    # "arch/*",             # add when ready
+    # "drivers/*",          # add when ready
+    # "boards/*",           # add when ready
+]
 
-[target.'cfg(target_arch = "riscv32")'.dependencies]
-arch = { path = "arch/riscv" }
+# No unwinding allowed for panic handlers
+[profile.dev]
+panic = "abort"
+[profile.release]
+panic = "abort"

@@ -32,6 +32,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
     * **Blinky/Panic Baseline**: A minimal program that toggles a GPIO or increments a volatile variable.
     * **Custom Panic Handler**: Verified "Safe-Halt" mechanism on code panic.
     * **The "Debug Stack"**: A working `.cargo/config.toml` that allows for `cargo run` execution directly to hardware.
+* **Tests that must pass:** None (validation is manual; see Gatekeeper 0).
 * **Gatekeeper 0:** Successful code execution on physical hardware verified via LED toggle or GDB register inspection.
 
 ---
@@ -47,7 +48,8 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 * **Deliverables:**
     * **Trait ContextSwitch**: Signatures for stack frame initialisation and context switch triggers.
     * **Generic Kernel Skeleton**: A hardware-blind `lib.rs` that compiles for any target.
-    * **Host Unit Tests**: A set of tests verifying scheduling logic on x86 without hardware.
+    * **Host Unit Tests**: A set of tests verifying scheduling logic on the host without hardware.
+* **Tests that must pass:** `cargo test -p kernel` (or equivalent so that all kernel crate tests run) succeeds on a host target (e.g. `x86_64-unknown-linux-gnu` or `aarch64-apple-darwin`). At least: (1) the kernel builds and is instantiable with a mock implementation of `ContextSwitch`; (2) one or more `#[test]` functions exercise scheduling/ready-list logic using mock traits. No tests require hardware or an embedded target to run.
 * **Gatekeeper 1:** Successful compilation of the same kernel logic for both a thumbv7 (ARM) target and an aarch64 (Host) target using mock traits.
 
 ---
@@ -63,6 +65,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 * **Deliverables:**
     * **Assembly Source**: Hard-coded register save/restore logic (`R0-R12`, `LR`, `PC`).
     * **Stack Guard Mechanism**: Verified detection of stack corruption via GDB.
+* **Tests that must pass:** None (validation is via GDB and hardware; see Gatekeeper 2).
 * **Gatekeeper 2:** A "Primitive Switch" demo where the CPU successfully jumps from `main()` to a single hard-coded function, verified via GDB register inspection.
 
 ---
@@ -80,6 +83,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
     * **The Scheduler Object**: A hardware-blind orchestration structure managing a collection of `TCBs`.
     * **Atomic Kernel Accessor**: A verified `CriticalSection` implementation that guarantees thread-safety for kernel structures.
     * **System Heartbeat**: Working implementation of `SystemTimer` triggering the scheduler's `yield` logic.
+* **Tests that must pass:** `cargo test -p kernel` passes on a host target. At least: (1) unit tests for ready-list behaviour (add task, remove/select next, ordering) using mock `ContextSwitch` and mock `CriticalSection`; (2) unit tests that the scheduler invokes the context switch trait as expected. Multi-blinky on hardware remains manual (see Gatekeeper 3).
 * **Gatekeeper 3:** "Multi-Blinky" validation. Two independent tasks toggling distinct GPIO pins, managed by the scheduler, running on physical hardware with no race conditions.
 
 ---
@@ -94,6 +98,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 * **Deliverables:**
     * **Typestate Driver API**: Drivers that use generic states (e.g., `Pin<Input>` vs `Pin<Output>`) to restrict method availability.
     * **Error Handling**: Implementation of hardware-specific `Error` types associated with the `Uart` and `Gpio` traits.
+* **Tests that must pass:** A compile-fail test (e.g. using `trybuild` or a `tests/` crate that expects compilation failure) that verifies: code that calls `write_byte()` (or equivalent) before completing the UART `init()` sequence does not compile. Running `cargo test` (or the script that runs the compile-fail check) passes when this illegal usage is rejected by the compiler.
 * **Gatekeeper 4:** Test-case script proving the code fails to compile if the UART setup sequence is violated.
 
 ---
@@ -107,6 +112,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
     * **Static Dispatch Proof**: Use `cargo-bloat` or `objdump` to prove that generic traits were inlined with zero runtime overhead.
 * **Deliverables:**
     * **Comparative Matrix**: A spreadsheet containing code-size and performance metrics vs. FreeRTOS.
+* **Tests that must pass:** No new automated test suite; deliverables are data and methodology. The failure suite and benchmark procedure must be documented and reproducible so results can be re-run for review.
 * **Gatekeeper 5:** A completed data set comparing Rust RTOS vs. FreeRTOS, ready for academic review.
 
 ---
@@ -120,6 +126,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 * **Final Deliverable:**
     * **Production Repository**: Fully commented, documented, and linted source code.
     * **Thesis PDF**: The submitted 60-page technical document.
+* **Tests that must pass:** All tests from Phases 1, 3, and 4 continue to pass; no regressions.
 
 ---
 
