@@ -36,12 +36,15 @@ def main() -> None:
         sys.exit(1)
 
     root: Path = repo_root()
-    
-    cmd = [ 
+    print(f"Flashing {elf.name}...", flush=True)
+
+    cmd = [
         "openocd",
         "-f", get_openocd_interface(),
         "-f", get_openocd_target(),
         "-c", f"program {elf} verify reset exit", # program = flash, verify = checksum, reset = run MCU, exit = quit OpenOCD
     ]
     result = subprocess.run(cmd, cwd=root)
+    if result.returncode == 0:
+        print("Flash succeeded.", flush=True)
     sys.exit(result.returncode)

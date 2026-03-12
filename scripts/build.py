@@ -41,15 +41,19 @@ def main() -> None:
     cmd = ["cargo", "build", "--target", target]
     if args.workspace:
         cmd.append("--workspace")
+        print("Building workspace...", flush=True)
     elif args.package:
         cmd.extend(["-p", args.package])
+        print(f"Building '{args.package}'...", flush=True)
     else:
-        pass # else: no -p, no --workspace → plain cargo build = default-members
+        print("Building default members...", flush=True)
 
     if args.release:
         cmd.append("--release")
 
     result = subprocess.run(cmd, cwd=root)
+    if result.returncode == 0:
+        print("Build succeeded.", flush=True)
     sys.exit(result.returncode)
 
 if __name__ == "__main__":

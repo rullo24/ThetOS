@@ -42,6 +42,7 @@ def main() -> None:
         sys.exit(1)
 
     root = repo_root()
+    print("Starting OpenOCD in background...", flush=True)
     # OpenOCD stays running to serve GDB on :3333 (no -c exit)
     openocd = subprocess.Popen(
         [
@@ -63,6 +64,15 @@ def main() -> None:
             "break main",
             "continue",
         ]
+
+        # check if gdb instance installed (pulled name from cargo config)       
+        gdb_instance = get_gdb_instance()
+        if not subprocess.run(["which", gdb_instance], capture_output=True, text=True).returncode == 0:
+            print(f"GDB instance '{gdb_instance}' not found", file=sys.stderr)
+            print("Install it with 'sudo apt install gdb-multiarch' or 'brew install gdb' (macOS)", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"Launching GDB for {elf.name} (break at main, then continue)...", flush=True)
         result = subprocess.run(
             [
                 get_gdb_instance(),
@@ -71,8 +81,9 @@ def main() -> None:
             ],
             cwd=root,
         )
+        print(f"GDB session ended (exit code {result.returncode}).", flush=True)
         sys.exit(result.returncode)
     finally:
-        # Tear down OpenOCD when GDB exits so we don't leave the daemon running
+        print("Stopping OpenOCD...", flush=True)
         openocd.terminate()
         openocd.wait()
