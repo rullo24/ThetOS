@@ -73,14 +73,10 @@ def main() -> None:
             sys.exit(1)
 
         print(f"Launching GDB for {elf.name} (break at main, then continue)...", flush=True)
-        result = subprocess.run(
-            [
-                get_gdb_instance(),
-                str(elf),
-                "-ex", " ".join(gdb_cmds),
-            ],
-            cwd=root,
-        )
+        gdb_call = [get_gdb_instance(), str(elf)]
+        for cmd in gdb_cmds:
+            gdb_call.extend(["-ex", cmd])
+        result = subprocess.run(gdb_call, cwd=root) # run GDB
         print(f"GDB session ended (exit code {result.returncode}).", flush=True)
         sys.exit(result.returncode)
     finally:
