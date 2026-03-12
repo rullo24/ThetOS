@@ -1,0 +1,11 @@
+[package]
+name = "no_rtos_blinky"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "no_rtos_blinky"
+
+[dependencies]
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
