@@ -48,3 +48,6 @@ def main() -> None:
     if result.returncode == 0:
         print("Flash succeeded.", flush=True)
     sys.exit(result.returncode)
+
+if __name__ == "__main__":
+    main()

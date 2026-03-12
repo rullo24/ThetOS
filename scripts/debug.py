@@ -87,3 +87,6 @@ def main() -> None:
         print("Stopping OpenOCD...", flush=True)
         openocd.terminate()
         openocd.wait()
+
+if __name__ == "__main__":
+    main()
