@@ -10,6 +10,15 @@ An investigation into compile-time safety invariants and zero-cost modularity fo
 
 ---
 
+## 🛠 Technical Stack & Implementation Constraints
+To ensure the academic validity of the thesis, the following boundaries are established:
+* **Core Infrastructure:** Use `cortex-m` and `cortex-m-rt` for standard vector table and startup logic.
+* **Hardware Access:** Use Peripheral Access Crates (PAC) for raw register definitions only.
+* **Driver Layer:** **Manual Implementation.** High-level Hardware Abstraction Layers (HALs) are forbidden. All Typestate logic and Trait implementations must be original work to validate the safety claims of the thesis.
+* **Kernel Layer:** Hardware-blind and generic-first. No architecture-specific code allowed in the `kernel/` crate.
+
+---
+
 ## Project Architecture
 
 The system is organised as a **Cargo Workspace** to enforce strict compile-time boundaries between the hardware-independent kernel and the target-specific hardware ports.

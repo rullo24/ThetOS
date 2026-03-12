@@ -5,21 +5,50 @@ This roadmap outlines the development cycle for a modular Real-Time Operating Sy
 
 ---
 
-## Phase 1: The Formal Contract & Workspace (Expected: 4 weeks)
-**Objective:** Establish the "Laws" of the system and the zero-touch build pipeline.
+## 📑 Thesis Problem Statement
+
+> Current industry-standard RTOS architectures (typically C-based) lack the ability to enforce memory safety and hardware-state invariants at compile-time, resulting in runtime failures that are difficult to detect and debug. This thesis seeks to prove that a modular RTOS developed in Rust, utilising static dispatch and the typestate pattern, can eliminate these failure modes at the compilation stage without incurring a noticable performance penalty compared to a C-based equivalent.
+
+---
+
+## 🛠 Technical Stack & Implementation Constraints
+To ensure the academic validity of the thesis, the following boundaries are established:
+* **Core Infrastructure:** Use `cortex-m` and `cortex-m-rt` for standard vector table and startup logic.
+* **Hardware Access:** Use Peripheral Access Crates (PAC) for raw register definitions only.
+* **Driver Layer:** **Manual Implementation.** High-level Hardware Abstraction Layers (HALs) are forbidden. All Typestate logic and Trait implementations must be original work to validate the safety claims of the thesis.
+* **Kernel Layer:** Hardware-blind and generic-first. No architecture-specific code allowed in the `kernel/` crate.
+
+---
+
+## Phase 0: The Hardware Sanity Check (Expected: 1-2 weeks)
+**Objective:** Establish a "Bare-Metal" baseline and verify the toolchain/debug pipeline.
 
 * **Tasks:**
-    * Initialise the Cargo Workspace and `.cargo/config.toml` for `no_std` cross-compilation.
-    * Define core Trait signatures in `specs/` for `ContextSwitch`, `SystemTimer`, `Uart`, and `Gpio`.
-    * Implement the "Zero-Touch" dispatcher in `kernel/src/lib.rs` using `cfg` flags to alias the architecture crate.
+    * Configure the `memory.x` linker script for the target board's Flash and RAM boundaries.
+    * Implement a minimal `no_std` entry point using the relevant architecture runtime (e.g., `cortex-m-rt`).
+    * Implement a custom `#[panic_handler]` that triggers a hardware "Safe State" (e.g., LED SOS).
+    * Set up the debug environment: `probe-rs`, `openocd`, or GDB integration for flashing and real-time inspection.
 * **Deliverables:**
-    * **Trait `ContextSwitch`**: Signatures for stack frame initialisation and manual trigger of the context switch interrupt.
-    * **Trait `SystemTimer`**: Signatures for frequency configuration, interrupt clearing, and tick-waiting.
-    * **Trait `Uart`**: Signatures for baud-rate setup, atomic byte transmission, and byte reception.
-    * **Trait `Gpio`**: Signatures for pin state manipulation and mode switching (Input/Output).
-* **Documentation:** Draft the "Architectural Design" chapter justifying the trait-based approach over C-style header definitions.
+    * **Blinky/Panic Baseline**: A minimal program that toggles a GPIO or increments a volatile variable.
+    * **Custom Panic Handler**: Verified "Safe-Halt" mechanism on code panic.
+    * **The "Debug Stack"**: A working `.cargo/config.toml` that allows for `cargo run` execution directly to hardware.
+* **Gatekeeper 0:** Successful code execution on physical hardware verified via LED toggle or GDB register inspection.
 
-* **Gatekeeper 1:** A workspace that successfully runs `cargo build --target thumbv7em-none-eabihf` where the `kernel` can call these API signatures on "stubbed" implementations.
+---
+
+## Phase 1: The Formal Contract & Workspace (Expected: 4 weeks)
+**Objective:** Establish the "Laws" of the system and the generic build pipeline.
+
+* **Tasks:**
+    * Initialise the Cargo Workspace with a dedicated `boards/` crate to act as the system "Matchmaker."
+    * Define core Trait signatures in `specs/` for `ContextSwitch`, `SystemTimer`, `Uart`, and `Gpio`.
+    * Define the **Typestate Machine** traits in `specs/` (e.g., `trait State`, `struct Uninitialized`, `struct Enabled`).
+    * Refactor Kernel Entry: Implement the kernel as a generic structure `Kernel<C: ContextSwitch>` that accepts hardware at instantiation.
+* **Deliverables:**
+    * **Trait ContextSwitch**: Signatures for stack frame initialisation and context switch triggers.
+    * **Generic Kernel Skeleton**: A hardware-blind `lib.rs` that compiles for any target.
+    * **Host Unit Tests**: A set of tests verifying scheduling logic on x86 without hardware.
+* **Gatekeeper 1:** Successful compilation of the same kernel logic for both a thumbv7 (ARM) target and an aarch64 (Host) target using mock traits.
 
 ---
 
@@ -29,29 +58,29 @@ This roadmap outlines the development cycle for a modular Real-Time Operating Sy
 * **Tasks:**
     * Write the Assembly `PendSV` or `SysTick` handlers in `arch/arm-cortex-m`.
     * Implement manual stack frame allocation (creating the "Initial State" for a task).
+    * Configure basic **Stack Overflow Detection** (utilising MPU or Watermarking).
     * Implement the `ContextSwitch` trait for the ARM architecture.
 * **Deliverables:**
     * **Assembly Source**: Hard-coded register save/restore logic (`R0-R12`, `LR`, `PC`).
-    * **Stack Initialiser**: A function that accepts a function pointer and returns a formatted stack pointer (`sp`).
-* **Documentation:** Detailed diagramming of the Stack Anatomy and register save/restore sequences.
-
-* **Gatekeeper 2:** A "Primitive Switch" demo where the CPU successfully jumps from `main()` to a single hard-coded function and back to a known point, verified via GDB register inspection.
+    * **Stack Guard Mechanism**: Verified detection of stack corruption via GDB.
+* **Gatekeeper 2:** A "Primitive Switch" demo where the CPU successfully jumps from `main()` to a single hard-coded function, verified via GDB register inspection.
 
 ---
 
 ## Phase 3: The Minimal Kernel & Scheduler (Expected: 5 weeks)
-**Objective:** Orchestrate task execution through logic rather than manual jumps.
+**Objective:** Orchestrate task execution through hardware-blind logic while ensuring kernel-level atomicity.
 
 * **Tasks:**
-    * Develop the `TaskControlBlock` (TCB) within the `kernel` crate.
-    * Implement a **Round-Robin Scheduler** logic.
-    * Integrate the `arch` context-switch logic with the `kernel` scheduler.
-    * Implement a global "Critical Section" or Mutex to protect the Ready List.
+    * **Develop the TaskControlBlock (TCB)**: Define a generic structure to store stack pointers and task states.
+    * **Implement Critical Section Abstraction**: Define a `CriticalSection` trait in `specs/` using closure-based execution (`enter<F, R>(f: F)`) for atomic access.
+    * **Implement Architecture-Specific Atomics**: Implement `CriticalSection` in `arch/` using global interrupt disabling (e.g., `cpsid i` / `cpsie i`).
+    * **Develop Generic Round-Robin Scheduler**: Implement scheduling logic in `kernel/` utilising the `CriticalSection` trait to protect the Ready List.
+    * **Integrate System Heartbeat**: Utilise the generic `SystemTimer` trait to trigger the scheduler via an interrupt-driven tick.
 * **Deliverables:**
-    * **The `Scheduler` Object**: A structure managing a list of `TCB`s and the "Current Task" pointer.
-    * **System Heartbeat**: Integration of `SystemTimer` to trigger the scheduler at a fixed interval (e.g., 1ms).
-* **Documentation:** Flowcharts of the scheduling algorithm and state-transition diagrams for tasks (Ready, Running, Blocked).
-* **Gatekeeper 3:** "Multi-Blinky" validation. Two independent tasks toggling distinct GPIO pins, managed by the scheduler, running on physical hardware.
+    * **The Scheduler Object**: A hardware-blind orchestration structure managing a collection of `TCBs`.
+    * **Atomic Kernel Accessor**: A verified `CriticalSection` implementation that guarantees thread-safety for kernel structures.
+    * **System Heartbeat**: Working implementation of `SystemTimer` triggering the scheduler's `yield` logic.
+* **Gatekeeper 3:** "Multi-Blinky" validation. Two independent tasks toggling distinct GPIO pins, managed by the scheduler, running on physical hardware with no race conditions.
 
 ---
 
@@ -60,14 +89,12 @@ This roadmap outlines the development cycle for a modular Real-Time Operating Sy
 
 * **Tasks:**
     * Implement the STM32 UART driver in `drivers/uart` using the `Uart` trait.
-    * Apply the **Typestate Pattern**: Ensure `write_byte()` is inaccessible until the `init()` method has returned a valid state.
-    * Implement the GPIO driver with compile-time mode checking (preventing an Output-only method from being called on an Input-configured pin).
+    * **Apply the Typestate Pattern**: Ensure `write_byte()` is inaccessible until the `init()` method has returned a valid state.
+    * Implement the GPIO driver with compile-time mode checking.
 * **Deliverables:**
     * **Typestate Driver API**: Drivers that use generic states (e.g., `Pin<Input>` vs `Pin<Output>`) to restrict method availability.
     * **Error Handling**: Implementation of hardware-specific `Error` types associated with the `Uart` and `Gpio` traits.
-* **Documentation:** Comparison of the Rust Driver code vs. a standard C HAL, highlighting where the compiler catches illegal state transitions.
-
-* **Gatekeeper 4:** A "Safe Console" where the kernel logs its status over UART, and a test-case script proving the code fails to compile if the UART setup sequence is violated.
+* **Gatekeeper 4:** Test-case script proving the code fails to compile if the UART setup sequence is violated.
 
 ---
 
@@ -75,14 +102,11 @@ This roadmap outlines the development cycle for a modular Real-Time Operating Sy
 **Goal:** Collect the empirical data required for the 60-page thesis report.
 
 * **Tasks:**
-    * **The "Failure Suite":** Develop 5 intentional "Illegal" C programs (FreeRTOS) and 5 equivalent Rust programs.
-    * **Benchmarking:** Measure Context-Switch latency in CPU cycles using a Logic Analyser or the DWT Cycle Counter.
-    * **Size Analysis:** Compare the final binary footprint (.text, .data, .bss) against a minimal FreeRTOS build.
+    * **The "Failure Suite"**: Develop 5 intentional "Illegal" C programs (FreeRTOS) and 5 equivalent Rust programs.
+    * **Benchmarking**: Measure Context-Switch latency in CPU cycles using a Logic Analyser or the DWT Cycle Counter.
+    * **Static Dispatch Proof**: Use `cargo-bloat` or `objdump` to prove that generic traits were inlined with zero runtime overhead.
 * **Deliverables:**
-    * **Benchmark Suite**: A set of automated tests measuring cycle counts for the scheduler.
-    * **Comparative Matrix**: A spreadsheet containing code-size and performance metrics.
-* **Documentation:** Generate high-resolution graphs and tables for the "Evaluation" chapter.
-
+    * **Comparative Matrix**: A spreadsheet containing code-size and performance metrics vs. FreeRTOS.
 * **Gatekeeper 5:** A completed data set comparing Rust RTOS vs. FreeRTOS, ready for academic review.
 
 ---
@@ -92,9 +116,9 @@ This roadmap outlines the development cycle for a modular Real-Time Operating Sy
 
 * **Tasks:**
     * Finalise the `examples/` folder to demonstrate how a new board can be plugged in without changing kernel logic.
-    * Complete the "Future Work" section regarding RISC-V or I2C/SPI support.
     * Final proofread and submission of the thesis document.
-* **Final Deliverable:** * **Production Repository**: Fully commented, documented, and linted source code.
+* **Final Deliverable:**
+    * **Production Repository**: Fully commented, documented, and linted source code.
     * **Thesis PDF**: The submitted 60-page technical document.
 
 ---
@@ -103,8 +127,9 @@ This roadmap outlines the development cycle for a modular Real-Time Operating Sy
 
 | Milestone | Deliverable | Validation Method |
 | :--- | :--- | :--- |
-| **1** | Build Pipeline & API Specs | `cargo build` success for ARM target with stubbed traits. |
-| **2** | Primitive Switch Handler | Validated CPU register state and PC jump in GDB. |
-| **3** | Round-Robin Scheduler | Simultaneous task execution (Blinky) on hardware. |
+| **0** | Hardware Sanity & Panic Handler | LED Blink + Verified "Safe Halt" on code panic. |
+| **1** | Build Pipeline & Host Unit Tests | `cargo test` success on x86 for kernel logic. |
+| **2** | Primitive Switch & Stack Guard | Validated CPU register state + Verified Fault on Stack Overflow. |
+| **3** | Round-Robin Scheduler & Atomics | Simultaneous task execution + Race-condition verification. |
 | **4** | Typestate Drivers | Compilation failure on attempted illegal hardware state access. |
 | **5** | Empirical Benchmark Report | Comparative cycle-count and binary-size analysis vs FreeRTOS (C). |
