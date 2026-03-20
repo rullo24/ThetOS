@@ -41,6 +41,10 @@ def get_gdb_instance() -> str:
     v: Optional[str] = CARGO_CONFIG.get("scripting", {}).get("gdb_instance")
     return v or "arm-none-eabi-gdb"
 
+def get_openocd_scripts_dir() -> str:
+    v: Optional[str] = CARGO_CONFIG.get("scripting", {}).get("openocd_scripts_dir")
+    return v or "/usr/share/openocd/scripts"
+
 #########################
 ### PRIVATE FUNCTIONS ###
 #########################

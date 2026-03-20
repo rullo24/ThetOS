@@ -5,18 +5,19 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-
-# make scripts/common importable when run from repo root.
-_SCRIPTS_DIR = Path(__file__).resolve().parent
-if str(_SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(_SCRIPTS_DIR))
 from common.common import (
     get_elf_path,
     get_gdb_instance,
     get_openocd_interface,
     get_openocd_target,
     repo_root,
+    get_openocd_scripts_dir,
 )
+
+# make scripts/common importable when run from repo root.
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -49,6 +50,7 @@ def main() -> None:
             "openocd",
             "-f", get_openocd_interface(),
             "-f", get_openocd_target(),
+            "-c", f"add_script_search_dir {get_openocd_scripts_dir()}/target",
         ],
         cwd=root,
         stdout=subprocess.DEVNULL,

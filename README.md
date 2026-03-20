@@ -18,12 +18,45 @@ An investigation into compile-time safety invariants and zero-cost modularity fo
 * **OpenOCD** — Talks to the board over a compatible probe (e.g. ST-Link). Configure `[scripting]` in `.cargo/config.toml` with `openocd_interface` and `openocd_target` for your board.
 * **A GDB Install** — For `scripts/debug.py` (attach, load, breakpoints).
 
+### GDB Install (Fedora Example)
+
+```bash
+sudo dnf install openocd stlink gdb
+```
+
 **Rust Tooling:**
 ```bash
 rustup component add llvm-tools-preview
 cargo install cargo-binutils
 cargo install cargo-generate
+rustup target add thumbv7m-none-eabi
 ```
+
+**
+
+# Prerequisites (Fedora)
+- sudo dnf install openocd stlink gdb-multiarch
+- rustup target add thumbv7m-none-eabi
+
+Build
+- cd /path/to/no_rtos_no_config
+- cargo build
+
+Flash
+- openocd -f /usr/share/openocd/scripts/interface/stlink.cfg \
+          -f /usr/share/openocd/scripts/target/stm32l1.cfg \
+          -c "add_script_search_dir /usr/share/openocd/scripts/target" \
+          -c "program /path/to/no_rtos_no_config/target/thumbv7m-none-eabi/debug/no_rtos_no_config verify reset exit"
+
+Debug (GDB)
+- Terminal 1: run openocd without `exit` (keep it alive)
+- Terminal 2: gdb-multiarch /path/to/no_rtos_no_config/target/thumbv7m-none-eabi/debug/no_rtos_no_config
+- In GDB:
+  target extended-remote :3333
+  monitor reset halt
+  load
+  break main
+  continue
 
 ---
 

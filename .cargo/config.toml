@@ -9,6 +9,7 @@ target = "thumbv7m-none-eabi"
 rustflags = ["-C", "link-arg=-Tboards/nucleo/nucleo-l152re/memory.x"]
 
 [scripting]
-gdb_instance = "arm-none-eabi-gdb"
+gdb_instance = "gdb"
 openocd_interface = "interface/stlink.cfg" # default for ST-Link (use /scripts/list_openocd.py to list available interfaces)
-openocd_target = "stm32l1.cfg" # chip series (use /scripts/list_openocd.py to list available targets)
+openocd_scripts_dir = "/usr/share/openocd/scripts"
+openocd_target = "target/stm32l1.cfg" # chip series (use /scripts/list_openocd.py to list available targets)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build embedded binary. Ensures target is installed, then runs cargo build."""
 
+import os
 import argparse
 import subprocess
 import sys
@@ -33,6 +34,16 @@ def main() -> None:
     )
     args = parser.parse_args()
     root = repo_root()
+
+    if args.package:
+        example_dir = root / "examples" / "phase0" / args.package
+        memory_x_dst = example_dir / "memory.x"
+        bsp_memory_x_src = root / "boards" / "nucleo" / "nucleo-l152re" / "memory.x"
+        if not example_dir.is_dir():
+            raise SystemExit(f"Example directory not found: {example_dir}")
+        if memory_x_dst.exists() or memory_x_dst.is_symlink():
+            memory_x_dst.unlink()
+        os.symlink(bsp_memory_x_src, memory_x_dst)
 
     # Idempotent: no-op if target already installed
     target: str = get_target()
