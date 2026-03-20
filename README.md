@@ -18,6 +18,13 @@ An investigation into compile-time safety invariants and zero-cost modularity fo
 * **OpenOCD** — Talks to the board over a compatible probe (e.g. ST-Link). Configure `[scripting]` in `.cargo/config.toml` with `openocd_interface` and `openocd_target` for your board.
 * **A GDB Install** — For `scripts/debug.py` (attach, load, breakpoints).
 
+**Rust Tooling:**
+```bash
+rustup component add llvm-tools-preview
+cargo install cargo-binutils
+cargo install cargo-generate
+```
+
 ---
 
 ## 🛠 Technical Stack & Implementation Constraints
