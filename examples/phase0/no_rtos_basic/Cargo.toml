@@ -1,10 +1,10 @@
 [package]
-name = "no_rtos_blinky"
+name = "no_rtos_basic"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "no_rtos_blinky"
+name = "no_rtos_basic"
 
 [dependencies]
 cortex-m = "0.7"
