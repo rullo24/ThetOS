@@ -14,7 +14,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Build the package (unless --no-build) then flash it to the board.",
-        epilog="Example: python3 scripts/run.py -p no_rtos_blinky",
+        epilog="Example: python3 scripts/run.py -p no_rtos_basic",
     )
     parser.add_argument(
         "-p", "--package",

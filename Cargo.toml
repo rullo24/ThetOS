@@ -17,7 +17,7 @@ default-members = [
 
 # Builds **EXAMPLES** using the RTOS lib
 members = [
-    "examples/phase0/no_rtos_blinky",
+    "examples/phase0/no_rtos_basic",
     # "kernel",
     # "specs",
     # TODO: add drivers, arch and board specifics here
