@@ -7,5 +7,3 @@ edition = "2021"
 name = "no_rtos_basic"
 
 [dependencies]
-cortex-m = "0.7"
-cortex-m-rt = "0.7"

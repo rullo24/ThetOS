@@ -6,7 +6,7 @@
 target = "thumbv7m-none-eabi"
 
 [target.thumbv7m-none-eabi]
-rustflags = ["-C", "link-arg=-Tlink.x"]
+rustflags = ["-C", "link-arg=-Tmcu/stm32/stm32l152ret6/linker.ld"]
 
 [scripting]
 gdb_instance = "gdb"
