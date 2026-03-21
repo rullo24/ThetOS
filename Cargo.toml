@@ -18,6 +18,7 @@ default-members = [
 # Builds **EXAMPLES** using the RTOS lib
 members = [
     "examples/phase0/no_rtos_basic",
+    "mcu/stm32/stm32l152ret6",
     # "kernel",
     # "specs",
     # TODO: add drivers, arch and board specifics here

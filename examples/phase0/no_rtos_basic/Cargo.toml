@@ -7,3 +7,4 @@ edition = "2021"
 name = "no_rtos_basic"
 
 [dependencies]
+stm32l152ret6 = { path = "../../../mcu/stm32/stm32l152ret6" }

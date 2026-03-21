@@ -1,19 +1,20 @@
-#![no_main]
 #![no_std]
+#![no_main]
 
-// INTERNAL DEPENDENCIES
-
-// EXTERNAL DEPENDENCIES
 use core::panic::PanicInfo;
-use cortex_m_rt::entry;
+
+use stm32l152ret6 as _;
 
 #[panic_handler]
-#[inline(never)]
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-#[entry]
-fn main() -> ! {
-    loop {} 
+#[no_mangle]
+pub extern "C" fn main() -> ! {
+    let mut x: u32 = 0;
+    loop {
+        x = x.wrapping_add(7);
+        // Optional: stop GDB here every iteration — set `break main` on the next line after add, or use a separate `#[inline(never)] fn step()` and break there.
+    }
 }

@@ -5,20 +5,27 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from common.common import get_elf_path, get_openocd_interface, get_openocd_target, repo_root, get_openocd_scripts_dir
 
-# make scripts/common importable when run from repo root.
 _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
+from common.common import (
+    get_elf_path,
+    get_openocd_interface,
+    get_openocd_target,
+    get_openocd_scripts_dir,
+    repo_root,
+)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Flash the built ELF to the board via OpenOCD. Interface and target come from .cargo/config.toml [scripting].",
-        epilog="Example: python3 scripts/flash.py -p no_rtos_blinky",
+        epilog="Example: python3 scripts/flash.py -p no_rtos_basic",
     )
     parser.add_argument(
-        "-p", "--package",
+        "-p",
+        "--package",
         required=True,
         help="Cargo package name (binary to flash)",
     )
@@ -36,19 +43,25 @@ def main() -> None:
         sys.exit(1)
 
     root: Path = repo_root()
+    scripts_dir = get_openocd_scripts_dir()
     print(f"Flashing {elf.name}...", flush=True)
 
     cmd = [
         "openocd",
-        "-f", get_openocd_interface(),
-        "-f", get_openocd_target(),
-        "-c", f"add_script_search_dir {get_openocd_scripts_dir()}/target",
-        "-c", f"program {elf} verify reset exit",       
+        "-s",
+        scripts_dir,
+        "-f",
+        get_openocd_interface(),
+        "-f",
+        get_openocd_target(),
+        "-c",
+        f"program {elf} verify reset exit",
     ]
     result = subprocess.run(cmd, cwd=root)
     if result.returncode == 0:
         print("Flash succeeded.", flush=True)
     sys.exit(result.returncode)
+
 
 if __name__ == "__main__":
     main()
