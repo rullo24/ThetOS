@@ -6,7 +6,7 @@
 target = "thumbv7m-none-eabi"
 
 [target.thumbv7m-none-eabi]
-rustflags = ["-C", "link-arg=-Tboards/nucleo/nucleo-l152re/memory.x"]
+rustflags = ["-C", "link-arg=-Tlink.x"]
 
 [scripting]
 gdb_instance = "gdb"

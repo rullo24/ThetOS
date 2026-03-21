@@ -1,1 +1,0 @@
-/home/kali/vc/thetos/boards/nucleo/nucleo-l152re/memory.x
