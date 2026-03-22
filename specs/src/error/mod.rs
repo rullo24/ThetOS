@@ -1,3 +1,6 @@
 mod error;
 
-pub use error::{ThetosError, Result};
+pub use error::{
+    ThetosError, 
+    Result
+};
