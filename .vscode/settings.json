@@ -2,5 +2,8 @@
     "rust-analyzer.cargo.allTargets": false,
     "rust-analyzer.cargo.extraEnv": {
         "THETOS_BSP": "will_be_set_by_build.rs"
-    }
+    },
+    "rust-analyzer.check.extraArgs": [
+        "-A", "non_snake_case"
+    ]
 }
