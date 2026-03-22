@@ -1,0 +1,8 @@
+[package]
+name = "specs"
+version = "0.1.0"
+edition = "2021"
+description = "ThetOS trait contracts"
+
+[lib]
+crate-type = ["lib"]

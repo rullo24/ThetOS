@@ -8,11 +8,13 @@ resolver = "2"
 # Builds RTOS lib for target provided
 default-members = [
     "macros/entry",
+    "specs",
 ]
 
 # Builds **EXAMPLES** using the RTOS lib
 members = [
     "macros/entry",
+    "specs",
     "examples/phase0/no_rtos_basic",
     "bsp/nucleo/nucleo_l152re",
 ]
