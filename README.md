@@ -64,7 +64,7 @@ Debug (GDB)
 To ensure the academic validity of the thesis, the following boundaries are established:
 * **Core Infrastructure:** Use the appropriate architecture runtime crates for the target (e.g. `cortex-m-rt` for ARM) for vector table and startup logic.
 * **Hardware Access:** Use Peripheral Access Crates (PAC) for raw register definitions only.
-* **Driver Layer:** **Manual Implementation.** High-level Hardware Abstraction Layers (HALs) are forbidden. All Typestate logic and Trait implementations must be original work to validate the safety claims of the thesis.
+* **Peripheral drivers:** **Manual implementation.** High-level Hardware Abstraction Layers (HALs) are forbidden. All typestate logic and trait implementations must be original work to validate the safety claims of the thesis.
 * **Kernel Layer:** Hardware-blind and generic-first. No architecture-specific code allowed in the `kernel/` crate.
 
 ---
@@ -79,10 +79,11 @@ The system is organised as a **Cargo Workspace** to enforce strict compile-time 
 ├── docs/                     # PLANNING: Design specs & architectural diagrams
 ├── kernel/                   # THE CORE: Hardware-independent scheduling logic
 ├── specs/                    # THE CONTRACTS: Traits for modules to implement
-├── arch/                     # THE PORTS: CPU-specific assembly & context logic
-├── drivers/                  # MODULES: System-level peripheral implementations
-├── boards/                   # THE GLUE: Mapping kernel to physical hardware
-├── scripts/                  # TOOLING: Linker scripts & debug configurations
+├── arch/                     # THE PORTS: CPU-specific assembly, linker layout, context logic
+├── mcu/                      # DEVICE: Per-MCU crates (startup, memory.x, device link surface)
+├── bsp/                      # BOARD: BSP crates that wire an MCU crate to a physical board
+├── macros/                   # PROC MACROS: Attributes such as `#[entry]`
+├── scripts/                  # TOOLING: Build, flash, and debug helpers
 └── examples/                 # PROOF: Sample applications for validation
 ```
 
@@ -98,7 +99,7 @@ rustup target add thumbv7m-none-eabi
 
 **Build commands:**
 
-* **`cargo build`** — Builds only the RTOS library crates (kernel, specs, arch, drivers, boards). These are the crates listed in **`default-members`** in the root `Cargo.toml`. Add each new lib crate to both `members` and `default-members` as the project grows.
+* **`cargo build`** — Builds the crates listed in **`default-members`** in the root `Cargo.toml` (see that file for the current set; RTOS pieces such as `kernel/`, `specs/`, `mcu/`, and `bsp/` are added there as they come online). Add each new library crate to both `members` and `default-members` as the project grows.
 * **`cargo build --workspace`** — Builds every crate in the workspace, including all examples. This uses the full **`members`** list in the root `Cargo.toml`. Ensure `members` lists every crate (libs and examples); add each new example or lib there.
 
 ## Developer Workflow & Configuration
@@ -134,15 +135,15 @@ Low-level implementations for supported CPU instruction sets.
 * **Purpose:** Manages stack frame initialisation, register saving/restoring, and atomic operations.
 * **Thesis Relevance:** Isolates the "unsafe" code required for context switching from the safe modular kernel.
 
-### 4. `drivers/` (Modular System Services)
-Standardised, swappable peripheral modules.
-* **Purpose:** Provides implementations for serial consoles and system timers that adhere to `specs/`.
-* **Thesis Relevance:** Validates the **Typestate Pattern** by enforcing peripheral state machine safety (e.g., preventing a write to an uninitialised UART).
+### 4. `mcu/` (Device crates)
+Per-microcontroller packages: reset vector, RAM/flash map (`memory.x`), and other bring-up that is specific to a die or family (not a full development board).
+* **Purpose:** Owns the **device** side of linking and startup so examples and BSP crates can depend on one MCU crate rather than duplicating linker and reset logic.
+* **Thesis Relevance:** Keeps **PAC-level** and **vendor-specific** details out of the generic kernel while remaining explicit about which silicon is targeted.
 
-### 5. `boards/` (System Integration & BSP)
-The "Matchmaker" layer defining the physical system configuration.
-* **Purpose:** Maps specific pins to kernel functions and defines memory boundaries (SRAM/Flash).
-* **Thesis Relevance:** Proves **System Composition** by allowing the same kernel to be deployed across diverse hardware targets.
+### 5. `bsp/` (Board Support Packages)
+Board-level crates (e.g. a Nucleo board) that depend on an `mcu/` crate and expose the wiring and dependencies applications use.
+* **Purpose:** Maps a concrete board to the MCU crate and pulls the right artefacts into the link (pins, optional probes, feature flags).
+* **Thesis Relevance:** Proves **system composition** by letting the same kernel and `specs/` contracts target different boards via different BSP crates.
 
 ### 6. `docs/` (Planning & Technical Specifications)
 Centralised repository for design documents used to support the final thesis report (e.g. roadmap, architecture, safety invariants, benchmarking methodology).
