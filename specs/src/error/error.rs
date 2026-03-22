@@ -1,5 +1,6 @@
 use core::fmt::{Display, Formatter, Result as FmtResult};
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ThetosError {
     InvalidState,
     Busy,
