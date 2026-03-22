@@ -58,11 +58,11 @@ unsafe fn copy_data() {
 
 // zero the bss sections
 unsafe fn zero_bss() {
-    let mut p = addr_of_mut!(__sbss);
-    let end = addr_of_mut!(__ebss);
-    while (p as usize) < (end as usize) {
-        write_volatile(p, 0);
-        p = p.wrapping_add(1);
+    let mut p_bss_curr = addr_of_mut!(__sbss); // start of bss section in RAM
+    let end_bss = addr_of_mut!(__ebss); // end of bss section in RAM
+    while (p_bss_curr as usize) < (end_bss as usize) { // iterate over each bss byte
+        write_volatile(p_bss_curr, 0); // write 0x0 to current byte
+        p_bss_curr = p_bss_curr.wrapping_add(1); // increment ptr
     }
 }
 
@@ -72,7 +72,7 @@ core::arch::global_asm!(
     .section .vector_table,"a",%progbits    // Put following bytes in section `.vector_table`, allocatable, program bits (normal flash data).
     .align 2                                // Align location counter to 4 bytes (2^2); vectors must be word-aligned.
     .word {estack}                          // Word 0: initial MSP value (top of stack), not a branch target.
-    .word Reset                             // Word 1: reset vector — address of `Reset` (Thumb, LSB set by linker). Matches {Reset} in asm above.
+    .word Reset                             // Word 1: reset vector — address of `Reset` (Thumb, LSB set by linker). Matches Reset func in asm above.
     .rept 46                                // Emit the next directive 46 times (remaining core + NVIC slots for this chip).
     .word Default_Handler                   // Each slot: handler address; shared default until you override per IRQ.
     .endr                                   // End of `.rept` block.
