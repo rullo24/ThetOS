@@ -129,7 +129,7 @@ fn parse_tokens(src: &str) -> Option<TokenStream> {
 }
 
 /// DESCRIPTION
-/// captures tokens that make rustc report `msg` + abort crate compilation
+/// captures tokens that make rustc report `msg` + throw formatted compile error
 fn compile_error_tokens(msg: &str) -> TokenStream {
     format!("compile_error!({:?});", msg)
         .parse()

@@ -6,7 +6,10 @@
 target = "thumbv7m-none-eabi"
 
 [target.thumbv7m-none-eabi]
-rustflags = ["-C", "link-arg=-Tmcu/stm32/stm32l152ret6/linker.ld"]
+rustflags = [
+    "-C", "link-arg=-Tmcu/stm32/stm32l152ret6/memory.x", # MCU-specific memory map
+    "-C", "link-arg=-Tarch/cortex-m/cortex-m-common.ld", # common linker script (must be called second)
+]
 
 [scripting]
 gdb_instance = "gdb"

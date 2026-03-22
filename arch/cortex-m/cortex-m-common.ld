@@ -1,16 +1,11 @@
-/* Minimal STM32L152RE (512K flash, 80K RAM) -> single file */
-/* Startup must define Reset, populate .vector_table, and init .data/.bss before Rust code runs. */
+/* simplistic, common linker script -> need to provide MEMORY (FLASH + RAM) in memory.x"
+/* startup must define Reset, populate .vector_table, and init .data/.bss before Rust code runs. */
 
-MEMORY
-{
-    FLASH : ORIGIN = 0x08000000, LENGTH = 512K
-    RAM   : ORIGIN = 0x20000000, LENGTH = 80K
-}
+/* MEMORY {} - defined in memory.x elsewhere (mcu/) */
 
-/* Initial stack (vector word 0) */
-_estack = ORIGIN(RAM) + LENGTH(RAM);
-
-ENTRY(Reset);
+/* defining start of vector table */
+_estack = ORIGIN(RAM) + LENGTH(RAM); /* (vector table word 0) */
+ENTRY(Reset); /* vector table word 1 */
 
 SECTIONS
 {
