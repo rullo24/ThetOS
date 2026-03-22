@@ -71,8 +71,8 @@ unsafe fn zero_bss() {
 // NOTE: vector table defined in STM32L152xx reference manual, table 51 (pg 235/904)
 core::arch::global_asm!(
     r#"
-    .section .vector_table,"a",%progbits
-    .align 2
+    .section .vector_table,"a",%progbits // put following bytes in section `.vector_table`, allocatable, program bits (normal flash data)
+    .align 2                    // align to 4 bytes (thumb code is 2-byte -> align 2*2 = 4 bytes (32-bit words))
     .word {estack}              // 0x000: initial MSP.
     .word Reset                 // 0x004: Reset.
     .word Default_Handler       // 0x008: NMI.
