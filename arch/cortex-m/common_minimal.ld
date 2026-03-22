@@ -1,10 +1,14 @@
-/* simplistic, common linker script -> need to provide MEMORY (FLASH + RAM) in memory.x"
-/* startup must define Reset, populate .vector_table, and init .data/.bss before Rust code runs. */
-
-/* MEMORY {} - defined in memory.x elsewhere (mcu/) */
+/*
+  * Common Cortex-M layout (M0/M0+, M3, M4, M4F): link memory.x first, then this file.
+  * Startup must define Reset, emit .vector_table, and copy .data / zero .bss before Rust code runs.
+  * MEMORY {} - defined in memory.x (mcu/)
+  * Not here: vector table/VTOR/boot offset, FPU/ABI (target + startup), MPU/TrustZone, NVIC/SysTick,
+  * extra RAM regions or XIP (use memory.x + extra SECTIONS), unwinding (we discard exidx/extab).
+*/
 
 /* defining start of vector table */
 _estack = ORIGIN(RAM) + LENGTH(RAM); /* (vector table word 0) */
+ASSERT((_estack % 8) == 0, "initial MSP must be 8-byte aligned (AAPCS)");
 ENTRY(Reset); /* vector table word 1 */
 
 SECTIONS
@@ -45,6 +49,7 @@ SECTIONS
     __ebss = .;
   } > RAM
 
+  /* discard unwinding tables */
   /DISCARD/ :
   {
     *(.ARM.exidx .ARM.exidx.*);
