@@ -2,6 +2,7 @@
 name = "no_rtos_basic"
 version = "0.1.0"
 edition = "2021"
+build = "../../../.cargo/build.rs"
 
 [[bin]]
 name = "no_rtos_basic"
@@ -9,3 +10,6 @@ name = "no_rtos_basic"
 [dependencies]
 entry = { path = "../../../macros/entry" }
 nucleo_l152re = { path = "../../../bsp/nucleo/nucleo_l152re" }
+
+[build-dependencies]
+toml = "0.8"

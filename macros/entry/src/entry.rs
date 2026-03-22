@@ -9,9 +9,22 @@ use proc_macro::{
 pub(crate) fn expand_thetos_entry(attr: TokenStream, item: TokenStream) -> TokenStream {
     
     // `attr` is only the inside of the attribute, e.g. `bsp = nucleo_l152re` (no `#[` `]`).
-    let bsp_crate: String = match parse_bsp_attr(attr) {
-        Ok(s) => s,
-        Err(msg) => return compile_error_tokens(msg),
+    let bsp_crate: String = if attr_is_empty(&attr) {
+        // use THETOS_BSP environment var (if no #[entry(bsp = <bsp_crate>)] provided)
+        match std::env::var("THETOS_BSP") {
+            Ok(s) if is_safe_crate_token(&s) => s,
+            Ok(_) => return compile_error_tokens("entry: THETOS_BSP must be a valid crate identifier"),
+            Err(_) => return compile_error_tokens(
+                "entry: set THETOS_BSP (e.g. build.rs: cargo:rustc-env) or use #[entry(bsp = crate_name)]",
+            ),
+        }
+
+    } else {
+        // parse bsp (if provided)
+        match parse_bsp_attr(attr) {
+            Ok(s) => s,
+            Err(msg) => return compile_error_tokens(msg),
+        }
     };
 
     // force the board crate to link against the target
@@ -86,6 +99,12 @@ fn parse_bsp_attr(attr: TokenStream) -> Result<String, &'static str> {
     }
 
     return Ok(name);
+}
+
+/// DESCRIPTION
+/// true when #[entry] with no bsp attribute provided
+fn attr_is_empty(attr: &TokenStream) -> bool {
+    attr.clone().into_iter().next().is_none()
 }
 
 /// DESCRIPTION

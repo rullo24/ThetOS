@@ -11,6 +11,9 @@ rustflags = [
     "-C", "link-arg=-Tarch/cortex-m/common/common_minimal.ld", # common linker script (must be called second)
 ]
 
+[thetos]
+bsp = "nucleo_l152re" # Rust crate name of bsp used for examples
+
 [scripting]
 gdb_instance = "gdb"
 openocd_interface = "interface/stlink.cfg" # default for ST-Link (use /scripts/list_openocd.py to list available interfaces)

@@ -9,7 +9,7 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-#[entry(bsp = nucleo_l152re)]
+#[entry]
 fn app_main() -> ! {
     let mut x: u32 = 0;
     loop {
