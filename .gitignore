@@ -1,5 +1,6 @@
 # --- Local datasheets ---
 ds/*
+docs/ongoing_report.md
 
 # --- Rust / Cargo ---
 /target

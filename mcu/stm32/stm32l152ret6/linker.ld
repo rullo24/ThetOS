@@ -7,7 +7,7 @@ MEMORY
     RAM   : ORIGIN = 0x20000000, LENGTH = 80K
 }
 
-/* Initial stack (vector word 0); adjust if you place stack elsewhere. */
+/* Initial stack (vector word 0) */
 _estack = ORIGIN(RAM) + LENGTH(RAM);
 
 ENTRY(Reset);
