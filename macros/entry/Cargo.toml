@@ -1,0 +1,8 @@
+[package]
+name = "entry"
+version = "0.1.0"
+edition = "2021"
+description = "Macro for abstracting ThetOS firmware entry (e.g. #[entry])."
+
+[lib]
+proc-macro = true # enables the use of procedural macros

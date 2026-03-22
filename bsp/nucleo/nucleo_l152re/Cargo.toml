@@ -1,0 +1,8 @@
+[package]
+name = "nucleo_l152re"
+version = "0.1.0"
+edition = "2021"
+description = "Board support for STM Nucleo-L152RE."
+
+[dependencies]
+stm32l152ret6 = { path = "../../../mcu/stm32/stm32l152ret6" }
