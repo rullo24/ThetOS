@@ -13,6 +13,6 @@ fn panic(_info: &PanicInfo) -> ! {
 fn app_main() -> ! {
     let mut x: u32 = 0;
     loop {
-        x = x.wrapping_add(7);
+        x = x.wrapping_add(5);
     }
 }
