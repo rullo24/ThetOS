@@ -15,7 +15,7 @@ rustflags = [
 bsp = "nucleo_l152re" # Rust crate name of bsp used for examples
 
 [scripting]
-gdb_instance = "gdb"
+gdb_instance = "arm-none-eabi-gdb"
 openocd_interface = "interface/stlink.cfg" # default for ST-Link (use /scripts/list_openocd.py to list available interfaces)
 openocd_scripts_dir = "/usr/share/openocd/scripts"
 openocd_target = "target/stm32l1.cfg" # chip series (use /scripts/list_openocd.py to list available targets)
