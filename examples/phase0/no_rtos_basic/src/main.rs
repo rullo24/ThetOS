@@ -1,7 +1,10 @@
 #![no_std]
 #![no_main]
 
+// core lib imports
 use core::panic::PanicInfo;
+
+// local imports
 use entry::entry;
 
 #[panic_handler]

@@ -1,5 +1,3 @@
-//! CPU and exception contracts implemented in `arch/`.
-
 pub mod context_switch;
 pub mod idle;
 pub mod interrupt;
