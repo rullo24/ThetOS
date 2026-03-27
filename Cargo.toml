@@ -22,7 +22,7 @@ members = [
 ]
 
 [workspace.dependencies]
-toml = { workspace = true }
+toml = "0.8"
 specs = { path = "specs" }
 
 # No unwinding allowed for panic handlers
