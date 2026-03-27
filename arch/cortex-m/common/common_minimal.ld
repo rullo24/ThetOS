@@ -7,9 +7,15 @@
 */
 
 /* defining start of vector table */
-_estack = ORIGIN(RAM) + LENGTH(RAM); /* (vector table word 0) */
-ASSERT((_estack % 8) == 0, "initial MSP must be 8-byte aligned (AAPCS)");
 ENTRY(Reset); /* vector table word 1 */
+
+/* default only -> if not provided by memory.x */
+PROVIDE(__msp_stack_size = 0x800); /* 2KB */
+
+__msp_stack_top = ORIGIN(RAM) + LENGTH(RAM);
+__msp_stack_bottom = __msp_stack_top - __msp_stack_size;
+_estack = __msp_stack_top;
+ASSERT((_estack % 8) == 0, "initial MSP must be 8-byte aligned (AAPCS)");
 
 SECTIONS
 {
@@ -56,3 +62,5 @@ SECTIONS
     *(.ARM.extab .ARM.extab.*);
   }
 }
+
+ASSERT(__ebss <= __msp_stack_bottom, "RAM overflow");
