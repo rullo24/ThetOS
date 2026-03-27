@@ -6,3 +6,6 @@
 name = "kernel"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+specs = { workspace = true }

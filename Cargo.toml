@@ -9,18 +9,21 @@ resolver = "2"
 default-members = [
     "macros/entry",
     "specs",
+    "kernel",
 ]
 
 # Builds **EXAMPLES** using the RTOS lib
 members = [
     "macros/entry",
     "specs",
+    "kernel",
     "examples/phase0/no_rtos_basic",
     "bsp/nucleo/nucleo_l152re",
 ]
 
 [workspace.dependencies]
 toml = { workspace = true }
+specs = { path = "specs" }
 
 # No unwinding allowed for panic handlers
 [profile.dev]
