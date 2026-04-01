@@ -41,7 +41,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 **Objective:** Establish the "Laws" of the system and the generic build pipeline.
 
 * **Tasks:**
-    * Initialise the Cargo Workspace with a dedicated `boards/` crate to act as the system "Matchmaker."
+    * Initialise the Cargo Workspace with a dedicated `bsp/` crate to act as the system "Matchmaker."
     * Define core Trait signatures in `specs/` for `ContextSwitch`, `SystemTimer`, `Uart`, and `Gpio`.
     * Define the **Typestate Machine** traits in `specs/` (e.g., `trait State`, `struct Uninitialized`, `struct Enabled`).
     * Refactor Kernel Entry: Implement the kernel as a generic structure `Kernel<C: ContextSwitch>` that accepts hardware at instantiation.
@@ -58,15 +58,17 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 **Objective:** Implement the "Unsafe" core and register-level logic.
 
 * **Tasks:**
-    * Write the Assembly `PendSV` or `SysTick` handlers in `arch/arm-cortex-m`.
-    * Implement manual stack frame allocation (creating the "Initial State" for a task).
-    * Configure basic **Stack Overflow Detection** (utilising MPU or Watermarking).
-    * Implement the `ContextSwitch` trait for the ARM architecture.
+    * Implement the Cortex-M `ContextSwitch` port in `arch/`.
+    * Wire real PendSV save/restore handling into the startup vector path.
+    * Implement manual task context initialisation and basic stack overflow detection.
+    * Build a primitive switch demo and capture reproducible debug proof.
 * **Deliverables:**
-    * **Assembly Source**: Hard-coded register save/restore logic (`R0-R12`, `LR`, `PC`).
-    * **Stack Guard Mechanism**: Verified detection of stack corruption via GDB.
+    * **Hardware Port**: ARM context-switch implementation with task frame setup and PendSV trigger path.
+    * **Primitive Switch Evidence**: Debug-verified jump from `main()` into a prepared task context.
+    * **Stack Guard Evidence**: Verified detection of intentional stack corruption via GDB.
 * **Tests that must pass:** None (validation is via GDB and hardware; see Gatekeeper 2).
 * **Gatekeeper 2:** A "Primitive Switch" demo where the CPU successfully jumps from `main()` to a single hard-coded function, verified via GDB register inspection.
+* **Detailed implementation guide:** `docs/phase2_hardware_port.md`.
 
 ---
 
