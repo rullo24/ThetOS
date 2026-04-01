@@ -33,6 +33,15 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 * **`mcu/` hard define:** Owns device-family bring-up only (reset/startup, vector table ownership, memory/link surfaces, die-specific hooks). Must never own scheduling policy or kernel orchestration logic.
 * **`kernel/` hard define:** Owns hardware-blind orchestration only (task lifecycle, scheduler policy invocation, kernel state transitions, safe core API). Must never own concrete register-level or board-specific implementation.
 * **`bsp/` hard define:** Owns board composition only (bind concrete `arch + mcu + kernel`, select defaults, expose safe board-facing system entrypoints). Must never own generic kernel policy logic or low-level CPU save/restore internals.
+* **`specs/` contract rule:** `specs/` contains contracts and minimal shared model types only; concrete implementation structs belong in their owning implementation crates (for example, concrete kernel models in `kernel/`).
+
+### Boundary Review Checklist
+* **Kernel purity check:** no board/device register logic or board resource mapping appears in `kernel/`.
+* **MCU contract check:** `mcu` contracts describe silicon capabilities only (no app-facing ergonomics).
+* **BSP composition check:** `bsp` contracts and types represent board resources/composition, not raw silicon abstractions duplicated from `mcu`.
+* **Implementation location check:** concrete implementation structs stay out of `specs/` unless they are explicitly designated shared models.
+* **Dependency direction check:** no reverse dependency is introduced against the `kernel -> specs`, `arch -> specs`, `bsp -> kernel + arch + mcu + specs` rule.
+* **Unsafe boundary check:** `unsafe` usage remains confined to `arch/` and unavoidable startup code in `mcu/`.
 
 ---
 
@@ -58,7 +67,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 
 * **Tasks:**
     * Initialise the Cargo Workspace with a dedicated `bsp/` crate to act as the system "Matchmaker."
-    * Define core Trait signatures in `specs/` for `ContextSwitch`, `SystemTimer`, `Uart`, and `Gpio`.
+    * Define core Trait signatures in `specs/` for architecture, silicon hardware capabilities, and board-facing composition contracts.
     * Define the **Typestate Machine** traits in `specs/` (e.g., `trait State`, `struct Uninitialized`, `struct Enabled`).
     * Refactor Kernel Entry: Implement the kernel as a generic structure `Kernel<C: ContextSwitch>` that accepts hardware at instantiation.
 * **Deliverables:**

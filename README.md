@@ -124,7 +124,7 @@ The developer interacts exclusively with the root `Cargo.toml` to toggle system-
 
 ### 1. `specs/` (The Formal Contract)
 Defines the **Traits** (interfaces) that serve as the "law" for the system.
-* **Purpose:** Formalises behaviours for `ContextSwitch`, `SystemTimer`, `Uart`, and `Gpio`; plus typestate machine traits (e.g., `State`, `Uninitialized`, `Enabled`).
+* **Purpose:** Formalises contracts by concern (`arch`, `mcu`, `kernel`, `bsp`, and `common`) so hardware capabilities, kernel orchestration, and board-facing APIs remain cleanly separated.
 * **Thesis Relevance:** Demonstrates **Interface Segregation**, ensuring the kernel remains hardware-agnostic.
 
 ### 2. `kernel/` (The Core Orchestrator)

@@ -14,10 +14,10 @@ pub struct StackBounds {
 }
 
 pub trait CoreTcb<Context> {
-    fn task_id(&self) -> TaskId;
-    fn stack_bounds(&self) -> StackBounds;
-    fn context(&self) -> &Context;
-    fn context_mut(&mut self) -> &mut Context;
-    fn state(&self) -> TaskState;
+    fn get_task_id(&self) -> TaskId;
+    fn get_stack_bounds(&self) -> StackBounds;
+    fn get_context(&self) -> &Context;
+    fn get_context_mut(&mut self) -> &mut Context;
+    fn get_state(&self) -> TaskState;
     fn set_state(&mut self, state: TaskState);
 }

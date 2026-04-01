@@ -1,6 +1,6 @@
 use core::result::Result;
 
-/// low-level MCU UART capability contract.
+/// low-level MCU UART capability contract (no board-facing behaviour).
 pub trait UartHardware {
     type Error: core::fmt::Debug;
 

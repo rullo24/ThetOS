@@ -1,7 +1,7 @@
 use core::result::Result;
 
-/// board-facing serial contract exposed to application code.
-pub trait UartPort {
+/// board-facing UART resource contract exposed to application code.
+pub trait BoardUart {
     type Error: core::fmt::Debug;
 
     fn write_byte(&mut self, byte: u8) -> Result<(), Self::Error>;

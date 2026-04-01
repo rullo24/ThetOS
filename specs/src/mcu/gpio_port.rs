@@ -1,6 +1,6 @@
 use core::result::Result;
 
-/// low-level MCU GPIO capability contract.
+/// low-level MCU GPIO capability contract (no board-facing behaviour).
 pub trait GpioPortPin {
     type Error: core::fmt::Debug;
 

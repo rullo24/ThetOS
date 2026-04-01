@@ -1,6 +1,6 @@
 use core::result::Result;
 
-/// low-level MCU timer capability contract.
+/// low-level MCU timer capability contract (no board-facing behaviour).
 pub trait TimerHardware {
     type Error: core::fmt::Debug;
 
