@@ -13,11 +13,11 @@ use specs::error::ThetosError;
 // global var to track num of times context switch is triggered
 static CTX_SWITCH_TRIGGER_COUNT: AtomicU32 = AtomicU32::new(0);
 
-struct MockContexSwitch;
+struct MockContextSwitch;
 
 /// DESCRIPTION
 /// mock context switch implementation that increments global test counter on trigger
-impl ContextSwitch for MockContexSwitch {
+impl ContextSwitch for MockContextSwitch {
     type TaskContext = usize; // dummy type to test specs/kernel setup (pre-logic)
 
     /// DESCRIPTION
@@ -65,7 +65,7 @@ extern "C" fn dummy_entry(_arg: *mut ()) -> ! {
 
 #[test]
 fn kernel_init_with_mocks() {
-    let ctx_switch = MockContexSwitch;
+    let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
     let kernel = Kernel::new(ctx_switch, crit_section);
 
@@ -77,7 +77,7 @@ fn kernel_init_with_mocks() {
 fn spawn_task_registers_first_task() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let ctx_switch = MockContexSwitch;
+    let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
     let mut kernel = Kernel::new(ctx_switch, crit_section);
 
@@ -98,7 +98,7 @@ fn spawn_task_registers_first_task() {
 fn spawn_task_rejects_null_stack_top() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let ctx_switch = MockContexSwitch;
+    let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
     let mut kernel = Kernel::new(ctx_switch, crit_section);
 
@@ -118,7 +118,7 @@ fn spawn_task_rejects_null_stack_top() {
 fn execute_in_critical_section_runs_operation() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let ctx_switch = MockContexSwitch;
+    let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
     let kernel = Kernel::new(ctx_switch, crit_section);
 
@@ -132,7 +132,7 @@ fn yield_now_triggers_ctx_switch() {
 
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let ctx_switch = MockContexSwitch;
+    let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
     let kernel = Kernel::new(ctx_switch, crit_section);
 

@@ -88,6 +88,7 @@ The system is organised as a **Cargo Workspace** to enforce strict compile-time 
 ```
 
 The phased development plan, gatekeepers, and milestones are defined in [docs/roadmap.md](docs/roadmap.md).
+Authoritative module boundaries are defined in `docs/roadmap.md` under `Architecture Boundaries`.
 
 ## Building
 

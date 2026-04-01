@@ -20,6 +20,16 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 
 ---
 
+## Architecture Boundaries
+* **`kernel/` owns orchestration only:** task lifecycle, scheduler invocation points, and kernel state transitions.
+* **`arch/` owns CPU primitives only:** context frame setup, PendSV/interrupt mechanics, and stack guard internals.
+* **`mcu/` owns silicon bring-up only:** startup/reset/vector table, memory map, and device-specific link surfaces.
+* **`bsp/` owns board composition only:** wires `kernel + arch + mcu` and exposes the safe board-facing system API.
+* **Dependency direction is strict:** `kernel -> specs`, `arch -> specs`, `bsp -> kernel + arch + mcu + specs`; no reverse dependencies.
+* **Safety boundary is strict:** user-facing APIs must be safe Rust; `unsafe` is confined to `arch/` and unavoidable `mcu/` startup code.
+
+---
+
 ## Phase 0: The Hardware Sanity Check (Expected: 1-2 weeks)
 **Objective:** Establish a "Bare-Metal" baseline and verify the toolchain/debug pipeline.
 
