@@ -28,6 +28,12 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 * **Dependency direction is strict:** `kernel -> specs`, `arch -> specs`, `bsp -> kernel + arch + mcu + specs`; no reverse dependencies.
 * **Safety boundary is strict:** user-facing APIs must be safe Rust; `unsafe` is confined to `arch/` and unavoidable `mcu/` startup code.
 
+### Hard Defines (Authoritative)
+* **`arch/` hard define:** Owns CPU/ISA mechanics only (context frame ABI, context save/restore, PendSV/IRQ primitives, stack guard internals). Must never own board mapping, startup policy, or user-facing ergonomics.
+* **`mcu/` hard define:** Owns device-family bring-up only (reset/startup, vector table ownership, memory/link surfaces, die-specific hooks). Must never own scheduling policy or kernel orchestration logic.
+* **`kernel/` hard define:** Owns hardware-blind orchestration only (task lifecycle, scheduler policy invocation, kernel state transitions, safe core API). Must never own concrete register-level or board-specific implementation.
+* **`bsp/` hard define:** Owns board composition only (bind concrete `arch + mcu + kernel`, select defaults, expose safe board-facing system entrypoints). Must never own generic kernel policy logic or low-level CPU save/restore internals.
+
 ---
 
 ## Phase 0: The Hardware Sanity Check (Expected: 1-2 weeks)
