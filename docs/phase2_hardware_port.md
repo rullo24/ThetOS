@@ -12,7 +12,7 @@ Already present:
 - Target and linker wiring in `.cargo/config.toml`.
 - Common linker rules in `arch/cortex-m/common/common_minimal.ld`.
 - Startup and vector table in `mcu/stm32/stm32l152ret6/src/startup.rs`.
-- `ContextSwitch` trait contract in `specs/src/cpu/context_switch.rs`.
+- `ContextSwitch` trait contract in `specs/src/arch/context_switch.rs`.
 - Existing scripts in `scripts/build.py`, `scripts/flash.py`, and `scripts/debug.py`.
 
 Missing for Phase 2 completion:
@@ -32,8 +32,8 @@ Missing for Phase 2 completion:
 - Thread stack: PSP
 - Handler stack: MSP
 - FPU frame support: not required for this target
-- Stack alignment: 8-byte (ARM requirement) ContextSwitch trait required
-- Task entry ABI: extern "C" fn(*mut ())
+- Stack alignment: 8-byte (ARM requirement), enforced per active architecture via `ContextSwitch::STACK_ALIGNMENT_BYTES`.
+- Task entry ABI: `extern "C" fn(*mut ()) -> !`
 - Arch/module split:
   - arch/cortex-m owns context switch machinery
   - mcu/stm32/stm32l152ret6 owns startup + vector table
@@ -60,12 +60,12 @@ Missing for Phase 2 completion:
 - Ensure alignment constraints are explicit and consistent.
 - Done when there is one authoritative layout document in `arch/cortex-m/README.md` or adjacent note.
 
-4. **Implement `initialiseTaskContext(...)`**
+4. **Implement `initialise_task_context(...)`**
 - Build the initial stack frame from `stack_top`, `entry_point`, and `entry_arg`.
 - Enforce pointer validity and deterministic initial frame values.
 - Done when a new task context can be created reliably and invalid inputs fail safely.
 
-5. **Implement `triggerPendSwitch()`**
+5. **Implement `trigger_pend_switch()`**
 - Implement a minimal PendSV request path.
 - Keep logic lean and deterministic.
 - Done when a trigger call sets PendSV pending as seen in debugger.
@@ -94,8 +94,8 @@ Missing for Phase 2 completion:
 
 ## Practical acceptance checklist
 - [ ] ARM `ContextSwitch` implementation exists and is consumable.
-- [ ] `initialiseTaskContext(...)` creates valid initial task contexts.
-- [ ] `triggerPendSwitch()` reliably requests PendSV.
+- [ ] `initialise_task_context(...)` creates valid initial task contexts.
+- [ ] `trigger_pend_switch()` reliably requests PendSV.
 - [ ] PendSV handler is wired into vector table and performs save/restore path.
 - [ ] Stack guard mechanism detects intentional corruption.
 - [ ] Primitive switch demo proves jump from `main()` to task context.
