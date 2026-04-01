@@ -6,7 +6,7 @@ use core::ops::FnOnce;
 // local imports
 use kernel::Kernel;
 use specs::cpu::ContextSwitch;
-use specs::scheduler::TaskId;
+use specs::scheduler::{SchedulerPolicy, TaskId};
 use specs::sync::CriticalSection;
 use specs::error::ThetosError;
 
@@ -18,6 +18,7 @@ struct MockContextSwitch;
 /// DESCRIPTION
 /// mock context switch implementation that increments global test counter on trigger
 impl ContextSwitch for MockContextSwitch {
+    const STACK_ALIGNMENT_BYTES: usize = 8;
     type TaskContext = usize; // dummy type to test specs/kernel setup (pre-logic)
 
     /// DESCRIPTION
@@ -25,7 +26,7 @@ impl ContextSwitch for MockContextSwitch {
     fn initialiseTaskContext(
         &self,
         stack_top: *mut u8,
-        _entry_point: extern "C" fn(*mut ()),
+        _entry_point: extern "C" fn(*mut ()) -> !,
         _entry_arg: *mut (),
     ) -> Self::TaskContext {
         return stack_top as usize; // return dummy value
@@ -39,6 +40,12 @@ impl ContextSwitch for MockContextSwitch {
 }
 
 struct MockCriticalSection;
+
+struct MockScheduler;
+
+impl SchedulerPolicy for MockScheduler {
+    fn onTaskSpawn(&mut self, _task_id: TaskId) {}
+}
 
 /// DESCRIPTION
 /// mock critical section implementation that calls operation parsed
@@ -67,7 +74,8 @@ extern "C" fn dummy_entry(_arg: *mut ()) -> ! {
 fn kernel_init_with_mocks() {
     let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
-    let kernel = Kernel::new(ctx_switch, crit_section);
+    let scheduler = MockScheduler;
+    let kernel = Kernel::new(ctx_switch, crit_section, scheduler);
 
     assert_eq!(kernel.get_task_count(), 0);
     assert_eq!(kernel.get_current_task(), None);
@@ -79,7 +87,8 @@ fn spawn_task_registers_first_task() {
 
     let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
-    let mut kernel = Kernel::new(ctx_switch, crit_section);
+    let scheduler = MockScheduler;
+    let mut kernel = Kernel::new(ctx_switch, crit_section, scheduler);
 
     let result = kernel.spawn_task(
         TaskId(1),
@@ -100,7 +109,8 @@ fn spawn_task_rejects_null_stack_top() {
 
     let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
-    let mut kernel = Kernel::new(ctx_switch, crit_section);
+    let scheduler = MockScheduler;
+    let mut kernel = Kernel::new(ctx_switch, crit_section, scheduler);
 
     let result = kernel.spawn_task(
         TaskId(1),
@@ -120,7 +130,8 @@ fn execute_in_critical_section_runs_operation() {
 
     let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
-    let kernel = Kernel::new(ctx_switch, crit_section);
+    let scheduler = MockScheduler;
+    let kernel = Kernel::new(ctx_switch, crit_section, scheduler);
 
     let value: usize = kernel.execute_in_critical_section(|| 42);
 
@@ -134,7 +145,8 @@ fn yield_now_triggers_ctx_switch() {
 
     let ctx_switch = MockContextSwitch;
     let crit_section = MockCriticalSection;
-    let kernel = Kernel::new(ctx_switch, crit_section);
+    let scheduler = MockScheduler;
+    let kernel = Kernel::new(ctx_switch, crit_section, scheduler);
 
     kernel.yield_now();
 

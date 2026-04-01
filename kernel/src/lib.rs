@@ -3,32 +3,36 @@
 // local imports
 use specs::cpu::ContextSwitch;
 use specs::sync::CriticalSection;
-use specs::scheduler::TaskId;
+use specs::scheduler::{SchedulerPolicy, TaskId};
 use specs::error::{ThetosError, Result};
 
 // hardware-blind kernel
-pub struct Kernel<CtxSwitchType, CriticalSectionType> 
+pub struct Kernel<CtxSwitchType, CriticalSectionType, SchedulerType>
 where
     CtxSwitchType: ContextSwitch,
     CriticalSectionType: CriticalSection,
+    SchedulerType: SchedulerPolicy,
 {
     ctx_switch: CtxSwitchType,
     crit_section: CriticalSectionType,
+    scheduler: SchedulerType,
     curr_task: Option<TaskId>,
     task_count: usize,
 }
 
-impl<CtxSwitchType, CriticalSectionType> Kernel<CtxSwitchType, CriticalSectionType>
+impl<CtxSwitchType, CriticalSectionType, SchedulerType> Kernel<CtxSwitchType, CriticalSectionType, SchedulerType>
 where
     CtxSwitchType: ContextSwitch,
     CriticalSectionType: CriticalSection,
+    SchedulerType: SchedulerPolicy,
 {
     /// DESCRIPTION
     /// create a new hardware-blind kernel instance
-    pub fn new(ctx_switch: CtxSwitchType, crit_section: CriticalSectionType) -> Self {
+    pub fn new(ctx_switch: CtxSwitchType, crit_section: CriticalSectionType, scheduler: SchedulerType) -> Self {
         return Self {
             ctx_switch,
             crit_section,
+            scheduler,
             curr_task: None,
             task_count: 0,
         };
@@ -51,6 +55,7 @@ where
 
         // initialise task context for the new task
         let _ = self.ctx_switch.initialiseTaskContext(stack_top, entry_point, entry_arg);
+        self.scheduler.onTaskSpawn(task_id);
         self.task_count += 1; 
 
         // checking if no task is currently running

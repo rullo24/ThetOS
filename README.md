@@ -102,6 +102,7 @@ rustup target add thumbv7m-none-eabi
 
 * **`cargo build`** — Builds the crates listed in **`default-members`** in the root `Cargo.toml` (see that file for the current set; RTOS pieces such as `kernel/`, `specs/`, `mcu/`, and `bsp/` are added there as they come online). Add each new library crate to both `members` and `default-members` as the project grows.
 * **`cargo build --workspace`** — Builds every crate in the workspace, including all examples. This uses the full **`members`** list in the root `Cargo.toml`. Ensure `members` lists every crate (libs and examples); add each new example or lib there.
+* **`cargo test -p kernel --target aarch64-apple-darwin`** — Runs kernel host tests on a desktop target (required because the default project target is embedded and cannot run test harnesses).
 
 ## Developer Workflow & Configuration
 

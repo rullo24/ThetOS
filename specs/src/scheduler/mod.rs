@@ -1,3 +1,3 @@
 pub mod scheduler;
 
-pub use scheduler::TaskId;
+pub use scheduler::{SchedulerPolicy, TaskId};
