@@ -53,7 +53,11 @@ impl CriticalSection for MockCriticalSection {
 
 /// DESCRIPTION
 /// dummy entry point for task (run nothing)
-extern "C" fn dummy_entry(_arg: *mut ()) {}
+extern "C" fn dummy_entry(_arg: *mut ()) -> ! {
+    loop {
+        core::hint::spin_loop();
+    }
+}
 
 /////////////
 // TESTING //

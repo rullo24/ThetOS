@@ -40,7 +40,7 @@ where
         &mut self,
         task_id: TaskId,
         stack_top: *mut u8,
-        entry_point: extern "C" fn(*mut ()),
+        entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
     ) -> Result<()> {
 

@@ -22,6 +22,27 @@ Missing for Phase 2 completion:
 
 ---
 
+## Implementation "Lock-Ins"
+
+### Phase 2 Locked Assumptions
+
+- Target triple: thumbv7m-none-eabi
+- Validation device: STM32L152RE (Cortex-M3)
+- Switch mechanism: PendSV
+- Thread stack: PSP
+- Handler stack: MSP
+- FPU frame support: not required for this target
+- Stack alignment: 8-byte (ARM requirement) ContextSwitch trait required
+- Task entry ABI: extern "C" fn(*mut ())
+- Arch/module split:
+  - arch/cortex-m owns context switch machinery
+  - mcu/stm32/stm32l152ret6 owns startup + vector table
+  - kernel remains hardware-blind
+- Phase 2 fail-safe policy: on invalid task context, task-return fallback, or stack-guard violation, enter a terminal fail-safe path (panic -> panic_handler safe-halt loop, optionally with BKPT for debugger visibility); never continue normal execution.
+- User-land safety lock: task creation, argument passing, and spawn APIs exposed to applications must be 100% safe Rust; unsafe is implementation-only within arch/mcu internals.
+
+---
+
 ## Step-by-step requirements
 
 1. **Lock architecture assumptions**
