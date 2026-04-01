@@ -1,6 +1,6 @@
 
 /// disable/enable all IRQs
 pub trait InterruptControl {
-    fn maskIrqs(&mut self);
-    fn unmaskIrqs(&mut self);
+    fn mask_irqs(&mut self);
+    fn unmask_irqs(&mut self);
 }

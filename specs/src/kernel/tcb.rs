@@ -14,12 +14,12 @@ pub struct StackBounds {
 }
 
 pub trait CoreTcb<Context> {
-    fn taskId(&self) -> TaskId;
-    fn stackBounds(&self) -> StackBounds;
+    fn task_id(&self) -> TaskId;
+    fn stack_bounds(&self) -> StackBounds;
     fn context(&self) -> &Context;
-    fn contextMut(&mut self) -> &mut Context;
+    fn context_mut(&mut self) -> &mut Context;
     fn state(&self) -> TaskState;
-    fn setState(&mut self, state: TaskState);
+    fn set_state(&mut self, state: TaskState);
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -31,11 +31,11 @@ pub struct TaskControlBlock<Context> {
 }
 
 impl<Context> CoreTcb<Context> for TaskControlBlock<Context> {
-    fn taskId(&self) -> TaskId {
+    fn task_id(&self) -> TaskId {
         self.task_id
     }
 
-    fn stackBounds(&self) -> StackBounds {
+    fn stack_bounds(&self) -> StackBounds {
         self.stack_bounds
     }
 
@@ -43,7 +43,7 @@ impl<Context> CoreTcb<Context> for TaskControlBlock<Context> {
         &self.task_context
     }
 
-    fn contextMut(&mut self) -> &mut Context {
+    fn context_mut(&mut self) -> &mut Context {
         &mut self.task_context
     }
 
@@ -51,7 +51,7 @@ impl<Context> CoreTcb<Context> for TaskControlBlock<Context> {
         self.task_state
     }
 
-    fn setState(&mut self, state: TaskState) {
+    fn set_state(&mut self, state: TaskState) {
         self.task_state = state;
     }
 }

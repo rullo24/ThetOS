@@ -22,7 +22,7 @@ impl ContextSwitch for MockContextSwitch {
 
     /// DESCRIPTION
     /// initialise task context w/ dummy value (nothing to run)
-    fn initialiseTaskContext(
+    fn initialise_task_context(
         &self,
         stack_top: *mut u8,
         _entry_point: extern "C" fn(*mut ()) -> !,
@@ -33,7 +33,7 @@ impl ContextSwitch for MockContextSwitch {
 
     /// DESCRIPTION
     /// increment global test counter to track num of times context switch is triggered
-    fn triggerPendSwitch(&self) {
+    fn trigger_pend_switch(&self) {
         CTX_SWITCH_TRIGGER_COUNT.fetch_add(1, Ordering::SeqCst);
     }
 }
@@ -43,14 +43,14 @@ struct MockCriticalSection;
 struct MockScheduler;
 
 impl SchedulerPolicy for MockScheduler {
-    fn onTaskSpawn(&mut self, _task_id: TaskId) {}
+    fn on_task_spawn(&mut self, _task_id: TaskId) {}
 }
 
 /// DESCRIPTION
 /// mock critical section implementation that calls operation parsed
 impl CriticalSection for MockCriticalSection {
 
-    fn withExecute<Res, Op>(&self, operation: Op) -> Res 
+    fn with_execute<Res, Op>(&self, operation: Op) -> Res 
     where Op: FnOnce() -> Res,
     {
         operation()

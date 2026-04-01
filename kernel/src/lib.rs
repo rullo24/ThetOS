@@ -53,8 +53,8 @@ where
         }
 
         // initialise task context for the new task
-        let _ = self.ctx_switch.initialiseTaskContext(stack_top, entry_point, entry_arg);
-        self.scheduler.onTaskSpawn(task_id);
+        let _ = self.ctx_switch.initialise_task_context(stack_top, entry_point, entry_arg);
+        self.scheduler.on_task_spawn(task_id);
         self.task_count += 1; 
 
         // checking if no task is currently running
@@ -69,7 +69,7 @@ where
     /// DESCRIPTION
     /// trigger a voluntary context switch
     pub fn yield_now(&self) {
-        self.ctx_switch.triggerPendSwitch();
+        self.ctx_switch.trigger_pend_switch();
     }
 
     /// DESCRIPTION
@@ -89,7 +89,7 @@ where
     pub fn execute_in_critical_section<Res, Op>(&self, operation: Op) -> Res 
     where Op: FnOnce() -> Res, // called at least once before return
     {
-        return self.crit_section.withExecute(operation);
+        return self.crit_section.with_execute(operation);
     }
 
 }
