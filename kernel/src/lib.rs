@@ -1,5 +1,7 @@
 #![no_std]
 
+pub mod tcb;
+
 // local imports
 use specs::arch::ContextSwitch;
 use specs::common::{Result, TaskId, ThetosError};

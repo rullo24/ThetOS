@@ -1,2 +1,5 @@
-//! Board-level composition contracts live here.
-//! Concrete board-facing system types are implemented in bsp crates.
+pub mod gpio;
+pub mod uart;
+
+pub use gpio::{GpioLevel, GpioPin};
+pub use uart::UartPort;
