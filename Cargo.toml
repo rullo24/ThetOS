@@ -17,6 +17,7 @@ members = [
     "macros/entry",
     "specs",
     "kernel",
+    "arch/cortex-m",
     "examples/phase0/no_rtos_basic",
     "bsp/nucleo/nucleo_l152re",
 ]
