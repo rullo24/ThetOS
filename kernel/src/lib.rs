@@ -1,10 +1,9 @@
 #![no_std]
 
 // local imports
-use specs::cpu::ContextSwitch;
-use specs::sync::CriticalSection;
-use specs::scheduler::{SchedulerPolicy, TaskId};
-use specs::error::{ThetosError, Result};
+use specs::arch::ContextSwitch;
+use specs::common::{Result, TaskId, ThetosError};
+use specs::kernel::{CriticalSection, SchedulerPolicy};
 
 // hardware-blind kernel
 pub struct Kernel<CtxSwitchType, CriticalSectionType, SchedulerType>

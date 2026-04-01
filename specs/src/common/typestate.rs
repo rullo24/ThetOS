@@ -1,4 +1,3 @@
-
 // local namespace for typestate State trait (can't define outside of this module)
 mod sealed {
     pub trait Sealed {}

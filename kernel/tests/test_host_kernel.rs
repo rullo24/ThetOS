@@ -5,10 +5,9 @@ use core::ops::FnOnce;
 
 // local imports
 use kernel::Kernel;
-use specs::cpu::ContextSwitch;
-use specs::scheduler::{SchedulerPolicy, TaskId};
-use specs::sync::CriticalSection;
-use specs::error::ThetosError;
+use specs::arch::ContextSwitch;
+use specs::common::{TaskId, ThetosError};
+use specs::kernel::{CriticalSection, SchedulerPolicy};
 
 // global var to track num of times context switch is triggered
 static CTX_SWITCH_TRIGGER_COUNT: AtomicU32 = AtomicU32::new(0);

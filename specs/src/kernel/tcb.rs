@@ -1,4 +1,4 @@
-use crate::scheduler::TaskId;
+use crate::common::TaskId;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum TaskState {

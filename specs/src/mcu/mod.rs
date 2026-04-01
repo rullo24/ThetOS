@@ -1,4 +1,3 @@
-
 pub mod gpio;
 pub mod system_timer;
 pub mod uart;

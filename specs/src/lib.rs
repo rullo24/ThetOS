@@ -1,10 +1,8 @@
 #![no_std]
 #![allow(non_snake_case)]
 
-pub mod cpu;
-pub mod error;
+pub mod arch;
+pub mod bsp;
+pub mod common;
 pub mod kernel;
-pub mod peripherals;
-pub mod scheduler;
-pub mod sync;
-pub mod typestate;
+pub mod mcu;

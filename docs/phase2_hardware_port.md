@@ -53,7 +53,7 @@ Missing for Phase 2 completion:
 2. **Create architecture implementation surface**
 - Add implementation files under `arch/cortex-m/` for context setup and switch operations.
 - Keep `kernel/` hardware-blind; wiring occurs at BSP/example composition level.
-- Done when a concrete type can implement `specs::cpu::ContextSwitch`.
+- Done when a concrete type can implement `specs::arch::ContextSwitch`.
 
 3. **Define canonical task context layout**
 - Define the exact saved frame shape and ordering expected by your save/restore path.

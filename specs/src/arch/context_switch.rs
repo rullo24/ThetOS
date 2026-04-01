@@ -1,7 +1,7 @@
 
 /// used to store arch port -> Task Control Block (TCB)
 pub trait ContextSwitch {
-    const STACK_ALIGNMENT_BYTES: usize;   
+    const STACK_ALIGNMENT_BYTES: usize;
     type TaskContext: Sized;
 
     fn initialiseTaskContext(
