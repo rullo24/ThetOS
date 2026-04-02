@@ -49,7 +49,7 @@ impl V7mBasicExceptionFrame {
         write_volatile(addr_of_mut!(p_frame.r12), 0x0); // R12 = 0x0
         write_volatile(addr_of_mut!(p_frame.lr), task_exit_lr); // LR = v7m_default_task_exit
         write_volatile(addr_of_mut!(p_frame.pc), entry_point as usize as u32); // PC = entry_point
-        write_volatile(addr_of_mut!(f.xpsr), Self::INITIAL_XPSR);
+        write_volatile(addr_of_mut!(p_frame.xpsr), Self::INITIAL_XPSR);
     }
 }
 
