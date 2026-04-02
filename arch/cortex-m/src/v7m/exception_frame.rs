@@ -6,6 +6,9 @@ use core::ptr::{write_volatile, addr_of_mut};
 const V7M_NUM_BASIC_EXCEPTION_FRAME_REGISTERS: usize = 8;
 const V7M_BASIC_EXCEPTION_FRAME_BYTES: usize = V7M_NUM_BASIC_EXCEPTION_FRAME_REGISTERS * core::mem::size_of::<u32>();
 
+// thumb target tracking (bit[0]) -> for instructions entry/branch addresses that are funcs (runable rather than data)
+pub const THUMB_TARGET_TRACKING_BIT: u32 = 1;
+
 // layout pulled from reference above (SP+0x00 .. SP+0x1C)
 #[repr(C)] // C-layout -> leave struct as is (no paddin)
 pub struct V7mBasicExceptionFrame {
@@ -47,8 +50,8 @@ impl V7mBasicExceptionFrame {
         write_volatile(addr_of_mut!(p_frame.r2), 0x0); // R2 = 0x0
         write_volatile(addr_of_mut!(p_frame.r3), 0x0); // R3 = 0x0
         write_volatile(addr_of_mut!(p_frame.r12), 0x0); // R12 = 0x0
-        write_volatile(addr_of_mut!(p_frame.lr), task_exit_lr); // LR = v7m_default_task_exit
-        write_volatile(addr_of_mut!(p_frame.pc), entry_point as usize as u32); // PC = entry_point
+        write_volatile(addr_of_mut!(p_frame.lr), task_exit_lr | THUMB_TARGET_TRACKING_BIT); // LR = v7m_default_task_exit (bitwise OR Thumb bit[0] so task exit runs as Thumb code)
+        write_volatile(addr_of_mut!(p_frame.pc), entry_point as usize as u32 | THUMB_TARGET_TRACKING_BIT); // PC = entry_point (bitwise OR Thumb bit[0] so entry point runs as Thumb code)
         write_volatile(addr_of_mut!(p_frame.xpsr), Self::INITIAL_XPSR);
     }
 }
