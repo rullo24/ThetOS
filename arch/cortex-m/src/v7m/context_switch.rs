@@ -30,13 +30,13 @@ impl ContextSwitch for V7mContextSwitch {
         }
 
         // calc stack pointer after frame is written
-        let new_sp = stack_top - V7mBasicExceptionFrame::FRAME_SIZE_BYTES; // -32 bytes for the exception frame
+        let new_sp = stack_top as usize - V7mBasicExceptionFrame::FRAME_SIZE_BYTES; // -32 bytes for the exception frame
         if (new_sp % Self::STACK_ALIGNMENT_BYTES) != 0 {
             panic!("frame base would leave misaligned stack pointer");
         }
 
         // write the initial task frame registers into the exception frame
-        let task_exit_lr: u32 = (v7m_default_task_exit as usize as u32); // thumb tracking bit set in exception frame initialisation
+        let task_exit_lr: u32 = v7m_default_task_exit as *const () as usize as u32; // func ptr made to u32 addr -> thumb tracking bit set in exception frame initialisation
         unsafe {
             V7mBasicExceptionFrame::write_initial_task_frame(
                 new_sp as *mut u8,
