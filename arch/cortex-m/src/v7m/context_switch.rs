@@ -31,6 +31,9 @@ impl ContextSwitch for V7mContextSwitch {
 
         // calc stack pointer after frame is written
         let new_sp = stack_top as usize - V7mBasicExceptionFrame::FRAME_SIZE_BYTES; // -32 bytes for the exception frame
+        if new_sp == 0x0 {
+            panic!("frame base would be null");
+        }
         if (new_sp % Self::STACK_ALIGNMENT_BYTES) != 0 {
             panic!("frame base would leave misaligned stack pointer");
         }
