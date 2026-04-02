@@ -42,7 +42,20 @@ impl V7mBasicExceptionFrame {
         entry_arg: *mut(),
         task_exit_lr: u32, // LR value to use for task exit (use v7m_default_task_exit)
     ) {
-        let p_frame = &mut *(frame_base.cast::<V7mBasicExceptionFrame>()); // cast the base ptr to a ptr to the exception frame (usable)
+
+        // checking all ptrs are valid (not null)
+        if frame_base.is_null() {
+            panic!("frame_base is null");
+        }
+        if (entry_point as usize) == 0x0 {
+            panic!("entry_point is null");
+        }
+        if task_exit_lr == 0x0 {
+            panic!("task_exit_LR is null");
+        }
+
+        // cast the base ptr to a ptr to the exception frame (usable)
+        let p_frame = &mut *(frame_base.cast::<V7mBasicExceptionFrame>()); 
 
         // write the task frame registers into block
         write_volatile(addr_of_mut!(p_frame.r0), entry_arg as usize as u32); // R0 = entry_arg (cast to u32)
