@@ -71,7 +71,7 @@ where
     /// DESCRIPTION
     /// trigger a voluntary context switch
     pub fn yield_now(&self) {
-        self.ctx_switch.trigger_pend_switch();
+        self.ctx_switch.trigger_pendsv_switch();
     }
 
     /// DESCRIPTION

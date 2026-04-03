@@ -65,7 +65,7 @@ Missing for Phase 2 completion:
 - Enforce pointer validity and deterministic initial frame values.
 - Done when a new task context can be created reliably and invalid inputs fail safely.
 
-5. **Implement `trigger_pend_switch()`**
+5. **Implement `trigger_pendsv_switch()`**
 - Implement a minimal PendSV request path.
 - Keep logic lean and deterministic.
 - Done when a trigger call sets PendSV pending as seen in debugger.
@@ -95,7 +95,7 @@ Missing for Phase 2 completion:
 ## Practical acceptance checklist
 - [ ] ARM `ContextSwitch` implementation exists and is consumable.
 - [ ] `initialise_task_context(...)` creates valid initial task contexts.
-- [ ] `trigger_pend_switch()` reliably requests PendSV.
+- [ ] `trigger_pendsv_switch()` reliably requests PendSV.
 - [ ] PendSV handler is wired into vector table and performs save/restore path.
 - [ ] Stack guard mechanism detects intentional corruption.
 - [ ] Primitive switch demo proves jump from `main()` to task context.

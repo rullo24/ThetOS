@@ -33,7 +33,7 @@ impl ContextSwitch for MockContextSwitch {
 
     /// DESCRIPTION
     /// increment global test counter to track num of times context switch is triggered
-    fn trigger_pend_switch(&self) {
+    fn trigger_pendsv_switch(&self) {
         CTX_SWITCH_TRIGGER_COUNT.fetch_add(1, Ordering::SeqCst);
     }
 }

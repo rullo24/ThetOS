@@ -1,3 +1,5 @@
+// REFERENCE: https://medium.com/embedworld/arm-cortex-pendsv-the-core-mechanism-behind-rtos-task-switching-7679e68e68da
+
 use crate::common::CORTEX_M_STACK_ALIGNMENT_BYTES;
 use specs::arch::ContextSwitch;
 use super::exception_frame::{v7m_default_task_exit, V7mBasicExceptionFrame};
@@ -53,9 +55,11 @@ impl ContextSwitch for V7mContextSwitch {
     }
 
     /// DESCRIPTION
-    /// trigger a pend switch to switch to the next task
-    fn trigger_pend_switch(&self) {
-        panic!("trigger_pend_switch not implemented");
+    /// trigger a PendSV switch to switch to the next task
+    fn trigger_pendsv_switch(&self) {
+        unsafe {
+            request_pendsv_pending(); // set PendSV pending bit HIGH
+        }
     }
 
 }

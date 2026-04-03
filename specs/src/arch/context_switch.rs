@@ -11,5 +11,5 @@ pub trait ContextSwitch {
         entry_arg: *mut (),
     ) -> Self::TaskContext;
 
-    fn trigger_pend_switch(&self);
+    fn trigger_pendsv_switch(&self);
 }
