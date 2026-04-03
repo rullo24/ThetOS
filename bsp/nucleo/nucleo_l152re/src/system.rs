@@ -1,4 +1,6 @@
 use specs::common::{Result, TaskId};
+use cortex_m::V7mContextSwitch;
+use specs::arch::ContextSwitch;
 
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
@@ -14,6 +16,12 @@ impl System {
     /// create a board-composed system instance.
     pub fn new() -> Self {
         Self { _reserved: () }
+    }
+
+    /// DESCRIPTION
+    /// request PendSV pending.
+    pub fn request_pendsv_pending(&self) {
+        V7mContextSwitch.trigger_pendsv_switch();
     }
 
     /// DESCRIPTION

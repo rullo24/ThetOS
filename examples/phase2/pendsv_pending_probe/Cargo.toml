@@ -1,11 +1,11 @@
 [package]
-name = "no_rtos_basic"
+name = "pendsv_pending_probe"
 version = "0.1.0"
 edition = "2021"
 build = "../../../.cargo/build.rs"
 
 [[bin]]
-name = "no_rtos_basic"
+name = "pendsv_pending_probe"
 
 [dependencies]
 entry = { path = "../../../macros/entry" }

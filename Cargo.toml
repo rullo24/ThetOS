@@ -18,8 +18,9 @@ members = [
     "specs",
     "kernel",
     "arch/cortex-m",
-    "examples/phase0/no_rtos_basic",
     "bsp/nucleo/nucleo_l152re",
+    "examples/phase0/no_rtos_basic",
+    "examples/phase2/pendsv_pending_probe",
 ]
 
 [workspace.dependencies]
