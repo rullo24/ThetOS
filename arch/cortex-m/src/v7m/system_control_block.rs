@@ -4,7 +4,7 @@
 use core::ptr::{write_volatile, read_volatile};
 
 /// ICSR (Interrupt Control and State Register) -> SCB base 0xE000_ED00 + 0x04.
-pub const SCB_ICSR: *mut u32 = 0xE000ED04;
+pub const SCB_ICSR: *mut u32 = 0xE000ED04 as *mut u32;
 
 /// Write 1 to set PendSV pending -> do not set PENDSVCLR in the same write.
 pub const ICSR_PENDSV_SET: u32 = 1 << 28; // bit 28 is set to 1 -> request PendSV interrupt
