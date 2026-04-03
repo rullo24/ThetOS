@@ -17,7 +17,10 @@ fn panic(_info: &PanicInfo) -> ! {
 fn app_main() -> ! {
     let mut x: u32 = 0;
     let system = System::new();
+    
+    unsafe { core::arch::asm!("cpsid i", options(nomem, nostack)); } // disable interrupts
     system.request_pendsv_pending(); // request PendSV pending (check in GDB)
+    unsafe { core::arch::asm!("cpsie i", options(nomem, nostack)); } // enable interrupts
 
     // to avoid exit
     loop {
