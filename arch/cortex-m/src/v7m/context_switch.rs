@@ -4,6 +4,7 @@ use crate::common::CORTEX_M_STACK_ALIGNMENT_BYTES;
 use specs::arch::ContextSwitch;
 use super::exception_frame::{v7m_default_task_exit, V7mBasicExceptionFrame};
 use super::V7mTaskContext; // pull in the task context type
+use super::system_control_block::request_pendsv_pending;
 
 pub struct V7mContextSwitch;
 
