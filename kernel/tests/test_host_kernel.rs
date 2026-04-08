@@ -1,6 +1,6 @@
 // core imports
 use core::sync::atomic::{AtomicU32, Ordering};
-use core::ptr::null_mut;
+use core::ptr::{null_mut, addr_of_mut};
 use core::ops::FnOnce;
 
 // local imports
@@ -11,6 +11,9 @@ use specs::kernel::{CriticalSection, SchedulerPolicy};
 
 // global var to track num of times context switch is triggered
 static CTX_SWITCH_TRIGGER_COUNT: AtomicU32 = AtomicU32::new(0);
+
+// global var to hold stack pool for testing
+static mut TEST_STACK_POOL: [u8; 1024] = [0; 1024];
 
 struct MockContextSwitch;
 
@@ -24,11 +27,12 @@ impl ContextSwitch for MockContextSwitch {
     /// initialise task context w/ dummy value (nothing to run)
     fn initialise_task_context(
         &self,
-        stack_top: *mut u8,
+        _stack_top: *mut u8,
+        _stack_limit: *mut u8,
         _entry_point: extern "C" fn(*mut ()) -> !,
         _entry_arg: *mut (),
     ) -> Self::TaskContext {
-        return stack_top as usize; // return dummy value
+        return _stack_top as usize; // return dummy value
     }
 
     /// DESCRIPTION
@@ -43,13 +47,14 @@ struct MockCriticalSection;
 struct MockScheduler;
 
 impl SchedulerPolicy for MockScheduler {
-    fn on_task_spawn(&mut self, _task_id: TaskId) {}
+    fn on_task_spawn(&mut self, _task_id: TaskId) {
+        // do nothing...
+    }
 }
 
 /// DESCRIPTION
 /// mock critical section implementation that calls operation parsed
 impl CriticalSection for MockCriticalSection {
-
     fn with_execute<Res, Op>(&self, operation: Op) -> Res 
     where Op: FnOnce() -> Res,
     {
@@ -71,10 +76,13 @@ extern "C" fn dummy_entry(_arg: *mut ()) -> ! {
 
 #[test]
 fn kernel_init_with_mocks() {
-    let ctx_switch = MockContextSwitch;
-    let crit_section = MockCriticalSection;
-    let scheduler = MockScheduler;
-    let kernel = Kernel::new(ctx_switch, crit_section, scheduler);
+    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let kernel = Kernel::new(
+        MockContextSwitch,
+        MockCriticalSection,
+        MockScheduler,
+        pool,
+    );
 
     assert_eq!(kernel.get_task_count(), 0);
     assert_eq!(kernel.get_current_task(), None);
@@ -84,14 +92,17 @@ fn kernel_init_with_mocks() {
 fn spawn_task_registers_first_task() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let ctx_switch = MockContextSwitch;
-    let crit_section = MockCriticalSection;
-    let scheduler = MockScheduler;
-    let mut kernel = Kernel::new(ctx_switch, crit_section, scheduler);
+    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let mut kernel = Kernel::new(
+        MockContextSwitch,
+        MockCriticalSection,
+        MockScheduler,
+        pool,
+    );
 
     let result = kernel.spawn_task(
         TaskId(1),
-        0x1000 as *mut u8, // dummy stack top
+        1024,
         dummy_entry, // does nothing
         null_mut(), // no argument
     );
@@ -106,14 +117,17 @@ fn spawn_task_registers_first_task() {
 fn spawn_task_rejects_null_stack_top() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let ctx_switch = MockContextSwitch;
-    let crit_section = MockCriticalSection;
-    let scheduler = MockScheduler;
-    let mut kernel = Kernel::new(ctx_switch, crit_section, scheduler);
+    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let mut kernel = Kernel::new(
+        MockContextSwitch,
+        MockCriticalSection,
+        MockScheduler,
+        pool,
+    );
 
     let result = kernel.spawn_task(
         TaskId(1),
-        null_mut(), // null stack top
+        32, // too small stack size
         dummy_entry, // does nothing
         null_mut(), // no argument
     );
@@ -127,10 +141,13 @@ fn spawn_task_rejects_null_stack_top() {
 fn execute_in_critical_section_runs_operation() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let ctx_switch = MockContextSwitch;
-    let crit_section = MockCriticalSection;
-    let scheduler = MockScheduler;
-    let kernel = Kernel::new(ctx_switch, crit_section, scheduler);
+    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let kernel = Kernel::new(
+        MockContextSwitch,
+        MockCriticalSection,
+        MockScheduler,
+        pool,
+    );
 
     let value: usize = kernel.execute_in_critical_section(|| 42);
 
@@ -142,10 +159,13 @@ fn yield_now_triggers_ctx_switch() {
 
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let ctx_switch = MockContextSwitch;
-    let crit_section = MockCriticalSection;
-    let scheduler = MockScheduler;
-    let kernel = Kernel::new(ctx_switch, crit_section, scheduler);
+    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let kernel = Kernel::new(
+        MockContextSwitch,
+        MockCriticalSection,
+        MockScheduler,
+        pool,
+    );
 
     kernel.yield_now();
 
