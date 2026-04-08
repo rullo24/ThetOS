@@ -20,36 +20,36 @@ impl ContextSwitch for V7mContextSwitch {
         stack_limit: *mut u8, // lowest addr valid for this stack
         entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
-    ) -> Self::TaskContext {
+    ) -> Result<Self::TaskContext, ContextSwitchError> {
         let stack_top_u = stack_top as usize;       
         let limit_u = stack_limit as usize;
 
         if stack_top_u == 0 || limit_u == 0 {
-            panic!("null stack_top or stack_limit for v7m task context");
+            return Err(ContextSwitchError::NullStackPointer);
         }
 
         if stack_top_u <= limit_u {
-            panic!("stack_top must be strictly above stack_limit for v7m task context");
+            return Err(ContextSwitchError::InvalidStackBounds);
         }
 
         if (stack_top_u % Self::STACK_ALIGNMENT_BYTES) != 0 {
-            panic!("unaligned stack_top for v7m task context");
+            return Err(ContextSwitchError::UnalignedStackTop);
         }
 
         if stack_top_u - limit_u < V7mTaskInitialStackHead::HEAD_SIZE_BYTES {
-            panic!("stack region too small for v7m task initial frame");
+            return Err(ContextSwitchError::StackRegionTooSmall);
         }
 
         let Some(p_head_base) = stack_top_u.checked_sub(V7mTaskInitialStackHead::HEAD_SIZE_BYTES) else {
-            panic!("stack_top too small for v7m task initial frame");
+            return Err(ContextSwitchError::StackRegionTooSmall);
         };
 
         if p_head_base < limit_u {
-            panic!("task initial stack head would sit below stack_limit");
+            return Err(ContextSwitchError::InvalidStackBounds);
         }
 
         if (p_head_base % Self::STACK_ALIGNMENT_BYTES) != 0 {
-            panic!("task initial stack head base would leave misaligned SP");
+            return Err(ContextSwitchError::UnalignedStackTop);
         }
 
         // write the initial task frame registers into the exception frame

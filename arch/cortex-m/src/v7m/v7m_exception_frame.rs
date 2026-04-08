@@ -1,4 +1,5 @@
 use core::ptr::{write_volatile, addr_of_mut};
+use specs::arch::error::ContextSwitchError;
 
 // REFERENCE: arm developer -> Home / Documentation / IP Products / Processors / Cortex-M / Cortex-M3 / Cortex-M3 Devices Generic User Guide / Exception entry and return
 // https://developer.arm.com/documentation/dui0552/a/the-cortex-m3-processor/exception-model/exception-entry-and-return?lang=en
@@ -75,17 +76,17 @@ impl V7mHwExceptionFrame {
         entry_point: extern "C" fn (*mut ()) -> !,
         entry_arg: *mut(),
         task_exit_lr: u32, // LR value to use for task exit (use v7m_default_task_exit)
-    ) {
+    ) -> Result<(), ContextSwitchError> {
 
         // checking all ptrs are valid (not null)
         if frame_base.is_null() {
-            panic!("frame_base is null");
+            return Err(ContextSwitchError::NullStackPointer);
         }
         if (entry_point as usize) == 0x0 {
-            panic!("entry_point is null");
+            return Err(ContextSwitchError::InvalidEntryPoint);
         }
         if task_exit_lr == 0x0 {
-            panic!("task_exit_LR is null");
+            return Err(ContextSwitchError::InvalidTaskExitLR);
         }
 
         // cast the base ptr to a ptr to the exception frame (usable)

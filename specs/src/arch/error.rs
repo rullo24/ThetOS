@@ -6,4 +6,5 @@ pub enum ContextSwitchError {
     UnalignedStackTop,
     StackRegionTooSmall,
     InvalidEntryPoint,
+    InvalidTaskExitLR,
 }
