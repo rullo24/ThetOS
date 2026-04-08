@@ -1,16 +1,14 @@
-// core imports
-use core::ptr::addr_of_mut;
 
 // local imports
-use cortex_m::common::CortexMCriticalSection;
+use cortex_m::{V7mContextSwitch, CortexMCriticalSection};
 use kernel::scheduler::FppScheduler;
 use kernel::Kernel;
 use specs::common::TaskId;
-use specs::kernel::{CriticalSection, Result, SchedulerPolicy};
+use specs::kernel::Result;
 
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
-    kernel: Kernel<V7mContextSwitch, V7mCriticalSection, FppScheduler>,
+    kernel: Kernel<V7mContextSwitch, CortexMCriticalSection, FppScheduler>,
 }
 
 impl System {
@@ -28,10 +26,11 @@ impl System {
         }
     }
 
+    // TODO: remove this method before release
     /// DESCRIPTION
     /// request PendSV pending.
     pub fn request_pendsv_pending(&self) {
-        self.kernel.trigger_pendsv_switch();
+        self.kernel.yield_now();
     }
 
     /// DESCRIPTION

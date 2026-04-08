@@ -16,6 +16,6 @@ impl CriticalSection for CortexMCriticalSection {
         // restore interrupts to previous state
         set_irqs_primask(initial_irq_state);
 
-        return result;
+        result // return operation result
     }
 }

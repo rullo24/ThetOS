@@ -1,7 +1,7 @@
 
 // local imports
-use specs::common::TaskId;
 use specs::kernel::SchedulerPolicy;
+use specs::common::TaskId;
 
 /// DESCRIPTION
 /// fixed-priority preemptive scheduler implementation
@@ -20,7 +20,7 @@ impl SchedulerPolicy for FppScheduler {
     
     /// DESCRIPTION
     /// register task spawn into scheduler state
-    fn on_task_spawn(&mut self, task_id: TaskId) {
+    fn on_task_spawn(&mut self, _task_id: TaskId) {
         // TODO: implement in phase 3
     }
 }

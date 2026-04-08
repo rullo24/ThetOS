@@ -3,6 +3,7 @@
 
 // core lib imports
 use core::panic::PanicInfo;
+use core::ptr::addr_of_mut;
 
 // local imports
 use entry::entry;

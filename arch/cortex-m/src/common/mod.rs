@@ -3,6 +3,7 @@
 pub const CORTEX_M_STACK_ALIGNMENT_BYTES: usize = 8;
 
 pub mod interrupts;
+pub mod critical_section;
 
 pub use interrupts::{
     disable_interrupts, 
@@ -11,3 +12,4 @@ pub use interrupts::{
     irsq_available_snapshot_and_disable,
     set_irqs_primask,
 };
+pub use critical_section::CortexMCriticalSection;
