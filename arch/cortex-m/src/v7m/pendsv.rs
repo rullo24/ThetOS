@@ -2,22 +2,21 @@
 
 /// imports
 use core::arch::global_asm;
-use super::exception_frame::V7M_HW_EXCEPTION_FRAME_BYTES;
+use super::exception_frame::V7mHwExceptionFrame;
 
-// defining EXC_RETURN constants
 // REFERENCE: https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching
-const EXC_RETURN_MSP_HANDLER_MODE: u32 = 0xFFFFFFF1;
-const EXC_RETURN_MSP_THREAD_MODE: u32 = 0xFFFFFFF9;
-const EXC_RETURN_PSP_THREAD_MODE: u32 = 0xFFFFFFFD;
-const EXC_RETURN_MSP_HANDLER_FPU_MODE: u32 = 0xFFFFFFE1;
-const EXC_RETURN_MSP_THREAD_FPU_MODE: u32 = 0xFFFFFFE9;
-const EXC_RETURN_PSP_THREAD_FPU_MODE: u32 = 0xFFFFFFED;
+// const EXC_RETURN_MSP_HANDLER_MODE: u32 = 0xFFFFFFF1;
+// const EXC_RETURN_MSP_THREAD_MODE: u32 = 0xFFFFFFF9;
+// const EXC_RETURN_PSP_THREAD_MODE: u32 = 0xFFFFFFFD;
+// const EXC_RETURN_MSP_HANDLER_FPU_MODE: u32 = 0xFFFFFFE1;
+// const EXC_RETURN_MSP_THREAD_FPU_MODE: u32 = 0xFFFFFFE9;
+// const EXC_RETURN_PSP_THREAD_FPU_MODE: u32 = 0xFFFFFFED;
 
 /// CONTROL.SPSEL[1] -> 0 == Thread used MSP before; 1 == Thread used PSP before
 const CONTROL_SPSEL_MASK: u32 = 1 << 1; // Thread used PSP before
 
 /// auto-stacked exception frame size (R0..xPSR)
-const V7M_HW_EXCEPTION_FRAME_BYTES: usize = 32;
+const V7M_HW_EXCEPTION_FRAME_BYTES: u32 = V7mHwExceptionFrame::FRAME_SIZE_BYTES as u32;
 
 /// next task PSP (frame base ptr from `initialise_task_context`) -> must be set before requesting PendSV
 #[no_mangle] 
@@ -39,20 +38,20 @@ pub unsafe fn set_current_task_tcb(tcb: *mut super::V7mTaskContext) {
     PENDSV_CURRENT_TASK = tcb;
 }
 
-/// DESCRIPTION
-/// PendSV_Handler -> called by hardware when PendSV is taken
+// DESCRIPTION
+// PendSV_Handler -> called by hardware when PendSV is taken
 global_asm!(
     ".syntax unified",
-    ".global PendSV_Handler",
-    ".thumb_func PendSV_Handler",
+    ".global PendSV_Handler", // can be referenced from other files
+    ".type PendSV_Handler, %function", // function type -> used by linker to place in correct section
     "PendSV_Handler:", // start of PendSV_Handler label (func)
 
-    // 1) Which stack did Thread mode use? (CONTROL.SPSEL) — where the HW stacked the 8-word frame.
+    // 1) Which stack did Thread mode use? (CONTROL.SPSEL) -> where the HW stacked the 8-word frame.
     "mrs r0, control", // r0 = CONTROL (read CONTROL reg) -> CPU auto stacks interrupted context (R0..xPSR) onto whichever stack was active for Thread mode (MSP or PSP)
     "tst r0, {control_spsel}", // Z = ((r0 & (1 << 1)) == 0) -> tests if SPSEL (bit 1) is 0 (MSP) or 1 (PSP)
     "bne .L_pendsv_thread_uses_psp", // if SPSEL=1 (branch when Z is 0), frame is on PSP -> save outgoing task
 
-    // 2a) Thread used MSP: HW frame is on MSP; discard it (we do not return to that thread here).
+    // 2a) Thread used MSP: HW frame is on MSP -> discard it (we do not return to that thread here).
     ".L_pendsv_thread_uses_msp:", // not jumped to -> here for readability
     "mrs r0, msp", // r0 reads in MSP
     "adds r0, r0, {hw_frame_bytes}", // discard 8-word hardware frame -> moves r0 to the base of the stack frame (deallocs)
@@ -81,7 +80,7 @@ global_asm!(
     "ldmia r0!, {{r4-r11}}", // pop callee-saved regs -> r0 addr moves 'up' to the hardware frame base
     "msr psp, r0", // move r0 into PSP (new stack lowest addr)
     "isb", // flush asm pipeline to ensure PSP is synchronised
-    "bx r14", // trigger exception return -> HW pops hardware frame from PSP and resumes task
+    "bx r14", // trigger exception return -> HW pops hardware frame from PSP and resumes new task
 
     // labels that are replaced at compile time
     control_spsel = const CONTROL_SPSEL_MASK,

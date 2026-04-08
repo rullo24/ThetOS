@@ -2,7 +2,7 @@
 
 use crate::common::CORTEX_M_STACK_ALIGNMENT_BYTES;
 use specs::arch::ContextSwitch;
-use super::exception_frame::{v7m_default_task_exit, V7mBasicExceptionFrame};
+use super::exception_frame::{v7m_default_task_exit, V7mHwExceptionFrame, V7mTaskInitialStackHead};
 use super::V7mTaskContext; // pull in the task context type
 use super::system_control_block::request_pendsv_pending;
 
@@ -28,31 +28,39 @@ impl ContextSwitch for V7mContextSwitch {
         }
 
         // basic check (stack must large enough to hold the exception frame)
-        if stack_addr < V7mBasicExceptionFrame::FRAME_SIZE_BYTES {
+        if stack_addr < V7mTaskInitialStackHead::HEAD_SIZE_BYTES {
             panic!("stack_top too small for v7m task context");
         }
 
-        // calc stack pointer after frame is written
-        let new_sp = stack_top as usize - V7mBasicExceptionFrame::FRAME_SIZE_BYTES; // -32 bytes for the exception frame
-        if new_sp == 0x0 {
-            panic!("frame base would be null");
+        let p_head_base = stack_top as usize - V7mTaskInitialStackHead::HEAD_SIZE_BYTES;
+        if p_head_base == 0x0 {
+            panic!("task initial stack head base is null");
         }
-        if (new_sp % Self::STACK_ALIGNMENT_BYTES) != 0 {
-            panic!("frame base would leave misaligned stack pointer");
+        if p_head_base % Self::STACK_ALIGNMENT_BYTES != 0 {
+            panic!("task initial stack head base would leave misaligned SP");
         }
 
         // write the initial task frame registers into the exception frame
         let task_exit_lr: u32 = v7m_default_task_exit as *const () as usize as u32; // func ptr made to u32 addr -> thumb tracking bit set in exception frame initialisation
         unsafe {
-            V7mBasicExceptionFrame::write_initial_task_frame(
-                new_sp as *mut u8,
+                       
+            // write the initial task frame registers into the callee-saved frame
+            core::ptr::write_bytes(
+                p_head_base as *mut u8,
+                0x0,
+                V7mTaskInitialStackHead::CALLEE_SIZE_BYTES,
+            );
+
+            // write the initial task frame registers into the hardware frame
+            V7mHwExceptionFrame::write_initial_task_frame(
+                V7mTaskInitialStackHead::get_hw_frame_ptr(p_head_base as *mut u8),
                 entry_point,
                 entry_arg,
                 task_exit_lr,
             );
         }
 
-        return V7mTaskContext::new(new_sp as *mut u8);
+        return V7mTaskContext::new(p_head_base as *mut u8);
     }
 
     /// DESCRIPTION
