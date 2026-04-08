@@ -1,4 +1,5 @@
 // local imports
+use specs::arch::StackGuardContext;
 use specs::common::TaskId;
 use specs::kernel::{CoreTcb, StackBounds, TaskState};
 
@@ -8,6 +9,7 @@ pub struct TaskControlBlock<Context> {
     pub stack_bounds: StackBounds,
     pub task_state: TaskState,
     pub task_context: Context,
+    pub stack_guard_ctx: StackGuardContext,
 }
 
 impl<Context> CoreTcb<Context> for TaskControlBlock<Context> {
