@@ -1,8 +1,10 @@
 #![no_std]
 
 pub mod tcb;
+pub mod scheduler;
 
 // local imports
+pub use scheduler::FppScheduler;
 use specs::arch::{ContextSwitch, ContextSwitchError};
 use specs::common::TaskId;
 use specs::kernel::{CriticalSection, SchedulerPolicy, KernelError, Result};

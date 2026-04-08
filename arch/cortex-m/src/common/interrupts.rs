@@ -29,3 +29,30 @@ pub fn irqs_available_snapshot() -> bool {
         primask_val == 0 // if PRIMASK is 0, interrupts are available
     }
 }
+
+/// DESCRIPTION
+/// snapshot of PRIMASK IRQ-unmask state stored and interrupts disabled
+pub fn irsq_available_snapshot_and_disable() -> bool {
+    let saved_primask: u32;
+    unsafe {
+        core::arch::asm!(
+            "mrs {saved}, PRIMASK",
+            "cpsid i",
+            saved = out(reg) saved_primask,
+            options(nomem, nostack, preserves_flags),
+        );
+    }
+    saved_primask == 0 // return true if interrupts were available
+}
+
+/// DESCRIPTION
+/// set the PRIMASK IRQ-unmask state
+pub fn set_irqs_primask(state: bool) {
+    unsafe {
+        core::arch::asm!(
+            "msr primask, {state}",
+            state = in(reg) state as u32,
+            options(nomem, nostack, preserves_flags),
+        );
+    }
+}
