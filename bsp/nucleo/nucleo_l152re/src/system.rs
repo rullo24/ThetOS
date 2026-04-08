@@ -11,18 +11,9 @@ use specs::kernel::{CriticalSection, SchedulerPolicy};
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
     _reserved: (),
-
-    // TODO: "internal composed kernel once concrete arch types are available.
-
 }
 
 impl System {
-
-    /// DESCRIPTION
-    /// create a board-composed system instance.
-    pub fn new() -> Self {
-        panic!("System::new() not implemented");
-    }
 
     /// DESCRIPTION
     /// create a board-composed system instance (`stack_pool` is SRAM reserved for kernel task stacks)

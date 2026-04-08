@@ -6,7 +6,7 @@ use core::ops::FnOnce;
 // local imports
 use kernel::Kernel;
 use specs::arch::ContextSwitch;
-use specs::common::{TaskId, ThetosError};
+use specs::common::{TaskId, KernelError};
 use specs::kernel::{CriticalSection, SchedulerPolicy};
 
 // global var to track num of times context switch is triggered
@@ -136,7 +136,7 @@ fn spawn_task_rejects_null_stack_top() {
         null_mut(), // no argument
     );
 
-    assert_eq!(result, Err(ThetosError::InvalidConfig));
+    assert_eq!(result, Err(KernelError::InvalidConfig));
     assert_eq!(kernel.get_task_count(), 0);
     assert_eq!(kernel.get_current_task(), None);
 }

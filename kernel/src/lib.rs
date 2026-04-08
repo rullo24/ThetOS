@@ -4,7 +4,7 @@ pub mod tcb;
 
 // local imports
 use specs::arch::ContextSwitch;
-use specs::common::{Result, TaskId, ThetosError};
+use specs::common::{Result, TaskId, KernelError};
 use specs::kernel::{CriticalSection, SchedulerPolicy};
 
 // must cover at least the initial task frame (hw + callee) and any padding
@@ -70,13 +70,13 @@ where
         // read arch-specific stack alignment -> reject if zero (invalid)
         let align = CtxSwitchType::STACK_ALIGNMENT_BYTES;
         if align == 0 {
-            return Err(ThetosError::InvalidConfig);
+            return Err(KernelError::InvalidConfig);
         }
 
         // round stack_size up to arch alignment for valid allocation
         let aligned_size = align_up(stack_size, align);
         if aligned_size < MIN_TASK_STACK_SIZE_BYTES {
-            return Err(ThetosError::InvalidConfig);
+            return Err(KernelError::InvalidConfig);
         }
 
         // align bump cursor so stack_limit is on alignment boundary
@@ -85,7 +85,7 @@ where
             .checked_add(aligned_size)
             .map_or(true, |end| end > self.stack_pool.len())
         {
-            return Err(ThetosError::InvalidConfig);
+            return Err(KernelError::InvalidConfig);
         }
 
         // capture limit + top from stack pool and advance cursor for next spawn

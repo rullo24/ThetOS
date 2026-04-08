@@ -1,3 +1,4 @@
+use super::error::ContextSwitchError;
 
 /// used to store arch port -> Task Control Block (TCB)
 pub trait ContextSwitch {
@@ -10,7 +11,7 @@ pub trait ContextSwitch {
         stack_limit: *mut u8, // lowest valid addr for this stack region
         entry_point: extern "C" fn(*mut ()) -> !, // fixed calling ABI for task entry
         entry_arg: *mut (),
-    ) -> Self::TaskContext;
+    ) -> Result<Self::TaskContext, ContextSwitchError>;
 
     fn trigger_pendsv_switch(&self);
 }
