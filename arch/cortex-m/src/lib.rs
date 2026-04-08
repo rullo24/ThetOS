@@ -3,5 +3,5 @@
 pub mod common;
 pub mod v7m;
 
-pub use common::CortexMCriticalSection;
+pub use common::{CortexMCriticalSection, CortexMStackGuard};
 pub use v7m::V7mContextSwitch;

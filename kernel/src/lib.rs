@@ -5,12 +5,20 @@ pub mod scheduler;
 
 // local imports
 pub use scheduler::FppScheduler;
-use specs::arch::{ContextSwitch, ContextSwitchError};
+use specs::arch::{
+    ContextSwitch,
+    ContextSwitchError,
+    StackGuardConfig,
+    StackGuardContext,
+    StackGuardMode,
+    StackGuardState,
+};
 use specs::common::TaskId;
 use specs::kernel::{CriticalSection, SchedulerPolicy, KernelError, Result};
 
 // must cover at least the initial task frame (hw + callee) and any padding
 const MIN_TASK_STACK_SIZE_BYTES: usize = 512; // arbitrary min size to cover all targets
+const DEFAULT_STACK_CANARY_WORD: u32 = 0xDEADBEEF;
 
 /// DESCRIPTION
 /// align a value up to the nearest multiple of the alignment
@@ -18,6 +26,28 @@ const MIN_TASK_STACK_SIZE_BYTES: usize = 512; // arbitrary min size to cover all
 fn align_up(n: usize, align: usize) -> usize {
     debug_assert!(align > 0);
     return (n + align - 1) / align * align;
+}
+
+#[inline]
+fn build_default_stack_guard_ctx(
+    stack_top: *mut u8,
+    stack_limit: *mut u8,
+) -> Result<StackGuardContext> {
+    
+    // check that stack ptrs make sense
+    if (stack_top as usize) <= (stack_limit as usize) {
+        return Err(KernelError::InvalidConfig);
+    }
+
+    Ok(StackGuardContext {
+        stack_top,
+        stack_limit,
+        state: StackGuardState { low_mark: stack_limit },
+        config: StackGuardConfig {
+            mode: StackGuardMode::Canary,
+            canary_word: DEFAULT_STACK_CANARY_WORD,
+        },
+    })
 }
 
 /// DESCRIPTION
@@ -107,6 +137,9 @@ where
         // capture limit + top from stack pool and advance cursor for next spawn
         let stack_limit = self.stack_pool.as_mut_ptr().wrapping_add(cursor_aligned);
         let stack_top = stack_limit.wrapping_add(aligned_size);
+        
+        // build the stack guard context
+        let _stack_guard_ctx = build_default_stack_guard_ctx(stack_top, stack_limit)?;
 
         // initialise task context for the new task
         self.ctx_switch
@@ -115,7 +148,6 @@ where
         
         // advance cursor for next spawn
         self.stack_cursor = cursor_aligned + aligned_size;
-
         self.scheduler.on_task_spawn(task_id);
         self.task_count += 1; 
 
