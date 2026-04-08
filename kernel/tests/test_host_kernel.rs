@@ -13,7 +13,11 @@ use specs::kernel::{CriticalSection, SchedulerPolicy};
 static CTX_SWITCH_TRIGGER_COUNT: AtomicU32 = AtomicU32::new(0);
 
 // global var to hold stack pool for testing
-static mut TEST_STACK_POOL: [u8; 1024] = [0; 1024];
+static mut POOL_KERNEL_INIT: [u8; 1024] = [0; 1024];
+static mut POOL_SPAWN_OK: [u8; 2048] = [0; 2048];
+static mut POOL_SPAWN_REJECT: [u8; 1024] = [0; 1024];
+static mut POOL_CRIT: [u8; 1024] = [0; 1024];
+static mut POOL_YIELD: [u8; 1024] = [0; 1024];
 
 struct MockContextSwitch;
 
@@ -76,7 +80,7 @@ extern "C" fn dummy_entry(_arg: *mut ()) -> ! {
 
 #[test]
 fn kernel_init_with_mocks() {
-    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let pool = unsafe { &mut *addr_of_mut!(POOL_KERNEL_INIT) };
     let kernel = Kernel::new(
         MockContextSwitch,
         MockCriticalSection,
@@ -92,7 +96,7 @@ fn kernel_init_with_mocks() {
 fn spawn_task_registers_first_task() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_OK) };
     let mut kernel = Kernel::new(
         MockContextSwitch,
         MockCriticalSection,
@@ -117,7 +121,7 @@ fn spawn_task_registers_first_task() {
 fn spawn_task_rejects_null_stack_top() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_REJECT) };
     let mut kernel = Kernel::new(
         MockContextSwitch,
         MockCriticalSection,
@@ -141,7 +145,7 @@ fn spawn_task_rejects_null_stack_top() {
 fn execute_in_critical_section_runs_operation() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let pool = unsafe { &mut *addr_of_mut!(POOL_CRIT) };
     let kernel = Kernel::new(
         MockContextSwitch,
         MockCriticalSection,
@@ -159,7 +163,7 @@ fn yield_now_triggers_ctx_switch() {
 
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
-    let pool = unsafe { &mut *addr_of_mut!(TEST_STACK_POOL) };
+    let pool = unsafe { &mut *addr_of_mut!(POOL_YIELD) };
     let kernel = Kernel::new(
         MockContextSwitch,
         MockCriticalSection,

@@ -6,6 +6,6 @@ description = "Board support for STM Nucleo-L152RE."
 
 [dependencies]
 cortex_m = { path = "../../../arch/cortex-m" }
-kernel = { workspace = true }
+kernel = { path = "../../../kernel" }
 stm32l152ret6 = { path = "../../../mcu/stm32/stm32l152ret6" }
 specs = { workspace = true }
