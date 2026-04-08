@@ -81,7 +81,7 @@ global_asm!(
     "ldmia r0!, {{r4-r11}}", // pop callee-saved regs -> r0 addr moves 'up' to the hardware frame base
     "msr psp, r0", // move r0 into PSP (new stack lowest addr)
     "isb", // flush asm pipeline to ensure PSP is synchronised
-    "lrd lr, ={exc_return_psp}", // EXC_RETURN set to PSP thread mode to return to new task
+    "ldr lr, ={exc_return_psp}", // EXC_RETURN set to PSP thread mode to return to new task
     "bx r14", // trigger exception return -> HW pops hardware frame from PSP and resumes new task
 
     // labels that are replaced at compile time
