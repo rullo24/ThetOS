@@ -87,7 +87,7 @@ core::arch::global_asm!(
     .word Default_Handler       // 0x02C: SVCall.
     .word Default_Handler       // 0x030: DebugMon.
     .word Default_Handler       // 0x034: reserved.
-    .word Default_Handler       // 0x038: PendSV.
+    .word PendSV_Handler        // 0x038: PendSV.
     .word Default_Handler       // 0x03C: SysTick.
     .word Default_Handler       // 0x040: IRQ0 WWDG.
     .word Default_Handler       // 0x044: IRQ1 PVD.
