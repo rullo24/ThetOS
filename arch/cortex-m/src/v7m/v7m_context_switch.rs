@@ -5,6 +5,7 @@ use specs::arch::ContextSwitch;
 use super::v7m_exception_frame::{v7m_default_task_exit, V7mHwExceptionFrame, V7mTaskInitialStackHead};
 use super::V7mTaskContext; // pull in the task context type
 use super::v7m_system_control_block::request_pendsv_pending;
+use specs::arch::error::ContextSwitchError;
 
 pub struct V7mContextSwitch;
 
@@ -69,10 +70,10 @@ impl ContextSwitch for V7mContextSwitch {
                 entry_point,
                 entry_arg,
                 task_exit_lr,
-            );
+            )?; // send errors upwards if fails
         }
 
-        return V7mTaskContext::new(p_head_base as *mut u8);
+        Ok(V7mTaskContext::new(p_head_base as *mut u8)) // return valid context
     }
 
     /// DESCRIPTION

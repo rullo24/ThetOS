@@ -101,6 +101,8 @@ impl V7mHwExceptionFrame {
         write_volatile(addr_of_mut!(p_frame.lr), task_exit_lr | THUMB_TARGET_TRACKING_BIT); // LR = v7m_default_task_exit (bitwise OR Thumb bit[0] so task exit runs as Thumb code)
         write_volatile(addr_of_mut!(p_frame.pc), entry_point as usize as u32 | THUMB_TARGET_TRACKING_BIT); // PC = entry_point (bitwise OR Thumb bit[0] so entry point runs as Thumb code)
         write_volatile(addr_of_mut!(p_frame.xpsr), Self::INITIAL_XPSR);
+
+        Ok(()) // succcess
     }
 }
 

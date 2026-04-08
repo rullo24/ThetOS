@@ -5,16 +5,16 @@ use core::ops::FnOnce;
 
 // local imports
 use kernel::Kernel;
-use specs::arch::ContextSwitch;
-use specs::common::{TaskId, KernelError};
-use specs::kernel::{CriticalSection, SchedulerPolicy};
+use specs::arch::{ContextSwitch, ContextSwitchError};
+use specs::common::TaskId;
+use specs::kernel::{CriticalSection, SchedulerPolicy, KernelError};
 
 // global var to track num of times context switch is triggered
 static CTX_SWITCH_TRIGGER_COUNT: AtomicU32 = AtomicU32::new(0);
 
 // global var to hold stack pool for testing
 static mut POOL_KERNEL_INIT: [u8; 1024] = [0; 1024];
-static mut POOL_SPAWN_OK: [u8; 2048] = [0; 2048];
+static mut POOL_SPAWN_OK: [u8; 1024] = [0; 1024];
 static mut POOL_SPAWN_REJECT: [u8; 1024] = [0; 1024];
 static mut POOL_CRIT: [u8; 1024] = [0; 1024];
 static mut POOL_YIELD: [u8; 1024] = [0; 1024];
@@ -35,8 +35,8 @@ impl ContextSwitch for MockContextSwitch {
         _stack_limit: *mut u8,
         _entry_point: extern "C" fn(*mut ()) -> !,
         _entry_arg: *mut (),
-    ) -> Self::TaskContext {
-        return _stack_top as usize; // return dummy value
+    ) -> Result<Self::TaskContext, ContextSwitchError> {
+        Ok(_stack_top as usize) // return dummy value
     }
 
     /// DESCRIPTION

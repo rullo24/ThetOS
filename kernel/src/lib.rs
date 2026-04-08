@@ -3,17 +3,31 @@
 pub mod tcb;
 
 // local imports
-use specs::arch::ContextSwitch;
-use specs::common::{Result, TaskId, KernelError};
-use specs::kernel::{CriticalSection, SchedulerPolicy};
+use specs::arch::{ContextSwitch, ContextSwitchError};
+use specs::common::TaskId;
+use specs::kernel::{CriticalSection, SchedulerPolicy, KernelError, Result};
 
 // must cover at least the initial task frame (hw + callee) and any padding
 const MIN_TASK_STACK_SIZE_BYTES: usize = 512; // arbitrary min size to cover all targets
 
+/// DESCRIPTION
+/// align a value up to the nearest multiple of the alignment
 #[inline]
 fn align_up(n: usize, align: usize) -> usize {
     debug_assert!(align > 0);
     return (n + align - 1) / align * align;
+}
+
+/// DESCRIPTION
+fn map_ctx_switch_err_to_kernel_err(err: ContextSwitchError) -> KernelError {
+    match err {
+        ContextSwitchError::NullStackPointer => KernelError::InvalidConfig,
+        ContextSwitchError::InvalidStackBounds => KernelError::InvalidConfig,
+        ContextSwitchError::UnalignedStackTop => KernelError::InvalidConfig,
+        ContextSwitchError::StackRegionTooSmall => KernelError::InvalidConfig,
+        ContextSwitchError::InvalidEntryPoint => KernelError::InvalidConfig,
+        _ => KernelError::Unsupported,
+    }
 }
 
 // hardware-blind kernel
@@ -91,10 +105,15 @@ where
         // capture limit + top from stack pool and advance cursor for next spawn
         let stack_limit = self.stack_pool.as_mut_ptr().wrapping_add(cursor_aligned);
         let stack_top = stack_limit.wrapping_add(aligned_size);
-        self.stack_cursor = cursor_aligned + aligned_size;
 
         // initialise task context for the new task
-        let _ = self.ctx_switch.initialise_task_context(stack_top, stack_limit, entry_point, entry_arg);
+        self.ctx_switch
+            .initialise_task_context(stack_top, stack_limit, entry_point, entry_arg)
+            .map_err(map_ctx_switch_err_to_kernel_err)?; // throw error upwards if fails
+        
+        // advance cursor for next spawn
+        self.stack_cursor = cursor_aligned + aligned_size;
+
         self.scheduler.on_task_spawn(task_id);
         self.task_count += 1; 
 
@@ -132,5 +151,4 @@ where
     {
         return self.crit_section.with_execute(operation);
     }
-
 }
