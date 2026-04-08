@@ -6,13 +6,9 @@ use core::ptr::{addr_of_mut, write_volatile};
 use super::v7m_exception_frame::V7mHwExceptionFrame;
 
 // REFERENCE: https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching
-// const EXC_RETURN_MSP_HANDLER_MODE: u32 = 0xFFFFFFF1;
-// const EXC_RETURN_MSP_THREAD_MODE: u32 = 0xFFFFFFF9;
 const EXC_RETURN_PSP_THREAD_MODE: u32 = 0xFFFFFFFD;
-// const EXC_RETURN_MSP_HANDLER_FPU_MODE: u32 = 0xFFFFFFE1;
-// const EXC_RETURN_MSP_THREAD_FPU_MODE: u32 = 0xFFFFFFE9;
-// const EXC_RETURN_PSP_THREAD_FPU_MODE: u32 = 0xFFFFFFED;
 
+// REFERENCE: https://developer.arm.com/documentation/dui0552/a/the-cortex-m3-processor/programmers-model/core-registers?lang=en
 /// CONTROL.SPSEL[1] -> 0 == Thread used MSP before; 1 == Thread used PSP before
 const CONTROL_SPSEL_MASK: u32 = 1 << 1; // Thread used PSP before
 
