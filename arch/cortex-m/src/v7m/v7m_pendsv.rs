@@ -2,7 +2,8 @@
 
 /// imports
 use core::arch::global_asm;
-use super::exception_frame::V7mHwExceptionFrame;
+use core::ptr::{addr_of_mut, write_volatile};
+use super::v7m_exception_frame::V7mHwExceptionFrame;
 
 // REFERENCE: https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching
 // const EXC_RETURN_MSP_HANDLER_MODE: u32 = 0xFFFFFFF1;
@@ -29,13 +30,13 @@ static mut PENDSV_CURRENT_TASK: *mut super::V7mTaskContext = core::ptr::null_mut
 /// DESCRIPTION
 /// set the PSP value the PendSV handler will restore -> must match `V7mTaskContext.sp`
 pub unsafe fn set_next_task_psp(psp: *mut u8) {
-    PENDSV_NEXT_PSP = psp as usize as u32;
+    write_volatile(addr_of_mut!(PENDSV_NEXT_PSP), psp as usize as u32);
 }
 
 /// DESCRIPTION
 /// set the outgoing task for PSP-thread saves -> null skips storing ongoing SP (i.e. first switch from MSP)
 pub unsafe fn set_current_task_tcb(tcb: *mut super::V7mTaskContext) {
-    PENDSV_CURRENT_TASK = tcb;
+    write_volatile(addr_of_mut!(PENDSV_CURRENT_TASK), tcb);
 }
 
 // DESCRIPTION

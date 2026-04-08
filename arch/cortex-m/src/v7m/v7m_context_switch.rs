@@ -2,9 +2,9 @@
 
 use crate::common::CORTEX_M_STACK_ALIGNMENT_BYTES;
 use specs::arch::ContextSwitch;
-use super::exception_frame::{v7m_default_task_exit, V7mHwExceptionFrame, V7mTaskInitialStackHead};
+use super::v7m_exception_frame::{v7m_default_task_exit, V7mHwExceptionFrame, V7mTaskInitialStackHead};
 use super::V7mTaskContext; // pull in the task context type
-use super::system_control_block::request_pendsv_pending;
+use super::v7m_system_control_block::request_pendsv_pending;
 
 pub struct V7mContextSwitch;
 
@@ -16,27 +16,39 @@ impl ContextSwitch for V7mContextSwitch {
     /// initialise task context for the new task
     fn initialise_task_context(
         &self,
-        stack_top: *mut u8,
+        stack_top: *mut u8, // highest addr valid for this stack
+        stack_limit: *mut u8, // lowest addr valid for this stack
         entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
     ) -> Self::TaskContext {
-        let stack_addr = stack_top as usize;       
+        let stack_top_u = stack_top as usize;       
+        let limit_u = stack_limit as usize;
 
-        // checking if stack_top is unaligned or null
-        if stack_addr == 0 || (stack_addr % Self::STACK_ALIGNMENT_BYTES) != 0 {
-            panic!("unaligned or null stack_top for v7m task context"); // cannot comptime check because stack_top is a pointer (runtime-changing)
+        if stack_top_u == 0 || limit_u == 0 {
+            panic!("null stack_top or stack_limit for v7m task context");
         }
 
-        // basic check (stack must large enough to hold the exception frame)
-        if stack_addr < V7mTaskInitialStackHead::HEAD_SIZE_BYTES {
-            panic!("stack_top too small for v7m task context");
+        if stack_top_u <= limit_u {
+            panic!("stack_top must be strictly above stack_limit for v7m task context");
         }
 
-        let p_head_base = stack_top as usize - V7mTaskInitialStackHead::HEAD_SIZE_BYTES;
-        if p_head_base == 0x0 {
-            panic!("task initial stack head base is null");
+        if (stack_top_u % Self::STACK_ALIGNMENT_BYTES) != 0 {
+            panic!("unaligned stack_top for v7m task context");
         }
-        if p_head_base % Self::STACK_ALIGNMENT_BYTES != 0 {
+
+        if stack_top_u - limit_u < V7mTaskInitialStackHead::HEAD_SIZE_BYTES {
+            panic!("stack region too small for v7m task initial frame");
+        }
+
+        let Some(p_head_base) = stack_top_u.checked_sub(V7mTaskInitialStackHead::HEAD_SIZE_BYTES) else {
+            panic!("stack_top too small for v7m task initial frame");
+        };
+
+        if p_head_base < limit_u {
+            panic!("task initial stack head would sit below stack_limit");
+        }
+
+        if (p_head_base % Self::STACK_ALIGNMENT_BYTES) != 0 {
             panic!("task initial stack head base would leave misaligned SP");
         }
 

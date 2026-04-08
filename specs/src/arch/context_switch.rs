@@ -7,6 +7,7 @@ pub trait ContextSwitch {
     fn initialise_task_context(
         &self,
         stack_top: *mut u8,
+        stack_limit: *mut u8, // lowest valid addr for this stack region
         entry_point: extern "C" fn(*mut ()) -> !, // fixed calling ABI for task entry
         entry_arg: *mut (),
     ) -> Self::TaskContext;
