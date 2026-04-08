@@ -1,6 +1,12 @@
-use specs::common::{Result, TaskId};
+// core imports
+use core::ptr::addr_of_mut;
+
+// local imports
 use cortex_m::V7mContextSwitch;
+use kernel::Kernel;
 use specs::arch::ContextSwitch;
+use specs::common::{Result, TaskId};
+use specs::kernel::{CriticalSection, SchedulerPolicy};
 
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
@@ -15,7 +21,20 @@ impl System {
     /// DESCRIPTION
     /// create a board-composed system instance.
     pub fn new() -> Self {
-        Self { _reserved: () }
+        panic!("System::new() not implemented");
+    }
+
+    /// DESCRIPTION
+    /// create a board-composed system instance (`stack_pool` is SRAM reserved for kernel task stacks)
+    pub fn new_with_pool(stack_pool: &'static mut [u8]) -> Self {
+        Self {
+            kernel: Kernel::new(
+                V7mContextSwitch,
+                NucleoCriticalSection,
+                NucleoScheduler,
+                stack_pool,
+            ),
+        }
     }
 
     /// DESCRIPTION
@@ -29,26 +48,17 @@ impl System {
     pub fn spawn_task(
         &mut self,
         task_id: TaskId,
-        stack_top: *mut u8,
+        stack_size: usize,
         entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
     ) -> Result<()> {
-        let _ = (task_id, stack_top, entry_point, entry_arg);
-
-        // TODO: spawn task in kernel.
-
-        Ok(())
+        return self.kernel.spawn_task(task_id, stack_size, entry_point, entry_arg);
     }
 
     /// DESCRIPTION
     /// request a cooperative yield.
     pub fn yield_now(&self) {
-        loop {
-            core::hint::spin_loop();
-        }
-
-        // TODO: forward to kernel yield path.
-
+        self.kernel.yield_now();       
     }
 
     /// DESCRIPTION
@@ -58,7 +68,7 @@ impl System {
             core::hint::spin_loop();
         }
 
-        // TODO: "hand over control to scheduler/context-switch start pathk
+        // TODO: "hand over control to scheduler/context-switch start path
 
     }
 }

@@ -13,10 +13,13 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
+static mut STACK_POOL: [u8; 1024] = [0; 1024];
+
 #[entry]
 fn app_main() -> ! {
     let mut x: u32 = 0;
-    let system = System::new();
+    let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
+    let system = System::new_with_pool(p_stack_pool);
     
     unsafe { core::arch::asm!("cpsid i", options(nomem, nostack)); } // disable interrupts
     system.request_pendsv_pending(); // request PendSV pending (check in GDB)
