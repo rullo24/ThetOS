@@ -7,7 +7,7 @@ use super::exception_frame::V7mHwExceptionFrame;
 // REFERENCE: https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching
 // const EXC_RETURN_MSP_HANDLER_MODE: u32 = 0xFFFFFFF1;
 // const EXC_RETURN_MSP_THREAD_MODE: u32 = 0xFFFFFFF9;
-// const EXC_RETURN_PSP_THREAD_MODE: u32 = 0xFFFFFFFD;
+const EXC_RETURN_PSP_THREAD_MODE: u32 = 0xFFFFFFFD;
 // const EXC_RETURN_MSP_HANDLER_FPU_MODE: u32 = 0xFFFFFFE1;
 // const EXC_RETURN_MSP_THREAD_FPU_MODE: u32 = 0xFFFFFFE9;
 // const EXC_RETURN_PSP_THREAD_FPU_MODE: u32 = 0xFFFFFFED;
@@ -80,6 +80,7 @@ global_asm!(
     "ldmia r0!, {{r4-r11}}", // pop callee-saved regs -> r0 addr moves 'up' to the hardware frame base
     "msr psp, r0", // move r0 into PSP (new stack lowest addr)
     "isb", // flush asm pipeline to ensure PSP is synchronised
+    "lrd lr, ={exc_return_psp}", // EXC_RETURN set to PSP thread mode to return to new task
     "bx r14", // trigger exception return -> HW pops hardware frame from PSP and resumes new task
 
     // labels that are replaced at compile time
@@ -87,4 +88,5 @@ global_asm!(
     hw_frame_bytes = const V7M_HW_EXCEPTION_FRAME_BYTES,
     current_task = sym PENDSV_CURRENT_TASK,
     next_psp = sym PENDSV_NEXT_PSP,
+    exc_return_psp = const EXC_RETURN_PSP_THREAD_MODE,
 );

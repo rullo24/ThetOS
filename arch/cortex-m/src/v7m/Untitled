@@ -1,0 +1,44 @@
+1. Critical: MSP path vs exception return (pendsv.rs)
+When the interrupted thread used MSP (CONTROL.SPSEL == 0), the hardware pushes the eight-word frame onto MSP. The handler then does adds r0, msp, hw_frame_bytes / msr msp, r0 to skip that frame, merges into .L_pendsv_restore, sets PSP for the new task, and executes bx r14.
+
+On entry, LR is EXC_RETURN. For a thread that was using MSP that is 0xFFFFFFF9 (return to Thread mode, continue using MSP for unstacking). The return sequence therefore unstacks eight words from MSP into the core registers. You have already moved MSP past the real frame, so the CPU loads the wrong eight words from MSP. That is undefined behaviour relative to the intended context.
+
+If the intent is to abandon the MSP-based thread and start (or resume) a PSP task, you must end with an EXC_RETURN that selects PSP (typically 0xFFFFFFFD for non‑FPU), or an equivalent pattern used in ports like FreeRTOS for the “first switch from MSP”. Your own comments reference those constants but the MSP path never applies them.
+
+The PSP path does not have this problem if LR already contains 0xFFFFFFFD: the hardware then unstacks from PSP, which you just set to the new task’s frame.
+
+
+pendsv.rs
+Lines 54-59
+    // 2a) Thread used MSP: HW frame is on MSP -> discard it (we do not return to that thread here).
+    ".L_pendsv_thread_uses_msp:", // not jumped to -> here for readability
+    "mrs r0, msp", // r0 reads in MSP
+    "adds r0, r0, {hw_frame_bytes}", // discard 8-word hardware frame -> moves r0 to the base of the stack frame (deallocs)
+    "msr msp, r0", // update MSP to point to new "top" of stack (hold MSP exception frame in addr under this)
+    "b .L_pendsv_schedule", // skip PSP save -> MSP save complete
+
+pendsv.rs
+Lines 76-83
+    ".L_pendsv_restore:",
+    "ldr r3, ={next_psp}", // load addr of next PSP into r3
+    "ldr r0, [r3]", // load val at r3 into r0
+    "ldmia r0!, {{r4-r11}}", // pop callee-saved regs -> r0 addr moves 'up' to the hardware frame base
+    "msr psp, r0", // move r0 into PSP (new stack lowest addr)
+    "isb", // flush asm pipeline to ensure PSP is synchronised
+    "bx r14", // trigger exception return -> HW pops hardware frame from PSP and resumes new task
+The last comment (“HW pops … from PSP”) is only true if EXC_RETURN selects PSP; it is false for the MSP-thread case unless LR is fixed before bx.
+
+2. Bug: bogus stack depth check (context_switch.rs)
+The comment says the stack must be large enough for the head, but the condition compares stack_top’s numeric address to HEAD_SIZE_BYTES (e.g. 64). A valid RAM top like 0x20008000 always passes; you are not checking region size. The only failures are absurdly low “top” values.
+
+
+context_switch.rs
+Lines 30-33
+        // basic check (stack must large enough to hold the exception frame)
+        if stack_addr < V7mTaskInitialStackHead::HEAD_SIZE_BYTES {
+            panic!("stack_top too small for v7m task context");
+        }
+A real check needs stack base (or size) vs stack_top, not address vs 64.
+
+3. Integration / ordering (not a line bug, but fragile)
+PENDSV_NEXT_PSP and PENDSV_CURRENT_TASK are plain static mut assignments from Rust. The compiler may reorder ordinary writes relative to other code unless you use write_volatile, atomics, or a compiler fence before request_pendsv_pending(). Your SCB path uses DSB/ISB, which helps the device see the write; it does not by itself stop the compiler from reordering earlier stores to globals. Worth tightening at the API boundary.
