@@ -75,11 +75,11 @@ core::arch::global_asm!(
     .align 2                    // align to 4 bytes (thumb code is 2-byte -> align 2*2 = 4 bytes (32-bit words))
     .word {estack}              // 0x000: initial MSP.
     .word Reset                 // 0x004: Reset.
-    .word Default_Handler       // 0x008: NMI.
-    .word Default_Handler       // 0x00C: HardFault.
-    .word Default_Handler       // 0x010: MemManage.
-    .word Default_Handler       // 0x014: BusFault.
-    .word Default_Handler       // 0x018: UsageFault.
+    .word NMI_Handler           // 0x008: NMI.
+    .word HardFault_Handler     // 0x00C: HardFault.
+    .word MemManage_Handler     // 0x010: MemManage.
+    .word BusFault_Handler      // 0x014: BusFault.
+    .word UsageFault_Handler    // 0x018: UsageFault.
     .word Default_Handler       // 0x01C: reserved
     .word Default_Handler       // 0x020: reserved
     .word Default_Handler       // 0x024: reserved
@@ -149,3 +149,40 @@ core::arch::global_asm!(
     "#,
     estack = const ESTACK,
 );
+
+// DEFAULT IMPLEMENTATIONS FOR HANDLERS (spin loop forever)
+
+#[no_mangle]
+pub extern "C" fn NMI_Handler() -> ! {
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn HardFault_Handler() -> ! {
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn MemManage_Handler() -> ! {
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn BusFault_Handler() -> ! {
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn UsageFault_Handler() -> ! {
+    loop {
+        core::hint::spin_loop();
+    }
+}
