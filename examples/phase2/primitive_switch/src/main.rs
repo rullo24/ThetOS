@@ -61,7 +61,8 @@ fn app_main() -> ! {
         enable_interrupts(); // ensure interrupts are enabled before context switch (should already be enabled)
     }
 
-    ctx_switch.trigger_pendsv_switch(); // trigger context switch to change task
+    // trigger context switch to change task
+    ctx_switch.trigger_pendsv_switch(); 
 
     loop {
         core::hint::spin_loop();

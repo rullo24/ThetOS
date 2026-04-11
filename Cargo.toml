@@ -22,6 +22,7 @@ members = [
     "examples/phase0/no_rtos_basic",
     "examples/phase2/pendsv_pending_probe",
     "examples/phase2/primitive_switch",
+    "examples/phase2/psp_to_psp",
 ]
 
 [workspace.dependencies]
