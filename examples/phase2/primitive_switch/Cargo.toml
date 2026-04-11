@@ -11,6 +11,7 @@ name = "primitive_switch"
 entry = { path = "../../../macros/entry" }
 nucleo_l152re = { path = "../../../bsp/nucleo/nucleo_l152re" }
 cortex_m = { path = "../../../arch/cortex-m" }
+specs = { workspace = true }
 
 [build-dependencies]
 toml = { workspace = true }

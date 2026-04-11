@@ -10,6 +10,7 @@ name = "pendsv_pending_probe"
 [dependencies]
 entry = { path = "../../../macros/entry" }
 nucleo_l152re = { path = "../../../bsp/nucleo/nucleo_l152re" }
+cortex_m = { path = "../../../arch/cortex-m" }
 
 [build-dependencies]
 toml = { workspace = true }

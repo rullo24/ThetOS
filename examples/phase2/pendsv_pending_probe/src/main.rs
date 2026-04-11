@@ -8,7 +8,7 @@ use core::ptr::addr_of_mut;
 // local imports
 use entry::entry;
 use nucleo_l152re::System;
-use cortex_m::{disable_interrupts, enable_interrupts};
+use cortex_m::common::interrupts::{disable_interrupts, enable_interrupts};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {

@@ -6,14 +6,16 @@ use core::panic::PanicInfo;
 use core::ptr::{addr_of_mut, null_mut};
 
 // local imports
+use specs::arch::ContextSwitch;
 use entry::entry;
 use cortex_m::V7mContextSwitch;
-use cortex_m::{set_current_task_tcb, set_next_task_psp};
+use cortex_m::v7m::{set_current_task_tcb, set_next_task_psp};
 use nucleo_l152re as _;
-use cortex_m::enable_interrupts;
+use cortex_m::common::interrupts::enable_interrupts;
 
-#[repr(align(8))]
-static mut TASK_STACK_POOL: [u8; 2048] = [0; 2048];
+#[repr(C, align(8))]
+struct TaskStackPool([u8; 2048]);
+static mut TASK_STACK_POOL: TaskStackPool = TaskStackPool([0; 2048]);
 static mut TASK_HEARTBEAT: u32 = 0;
 
 #[panic_handler]
@@ -35,7 +37,7 @@ extern "C" fn task_entry(_arg: *mut ()) -> ! {
 fn app_main() -> ! {
     
     // defining stack resources
-    let pool = unsafe { &mut *addr_of_mut!(TASK_STACK_POOL) };
+    let pool = unsafe { &mut (*addr_of_mut!(TASK_STACK_POOL)).0 };
     let stack_limit = pool.as_mut_ptr();
     let stack_top = stack_limit.wrapping_add(pool.len());
     
@@ -46,9 +48,9 @@ fn app_main() -> ! {
         task_entry, // entry point (func ptr)
         null_mut(), // no args
     ) {
-        Ok(c) -> c,
+        Ok(c) => c,
         Err(e) => panic!("failed to init task context: {:?}", e),
-    }
+    };
     
     unsafe {
         set_next_task_psp(ctx.sp); // set next task PSP -> must match `V7mTaskContext.sp`
