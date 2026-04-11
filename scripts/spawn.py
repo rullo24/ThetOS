@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """Start OpenOCD w/ specific item"""
 
@@ -46,20 +45,35 @@ def main() -> None:
     root = repo_root()
     scripts_dir = get_openocd_scripts_dir()
     print("Starting OpenOCD in background...", flush=True)
-    openocd = subprocess.Popen(
-        [
-            "openocd",
-            "-s",
-            scripts_dir,
-            "-f",
-            get_openocd_interface(),
-            "-f",
-            get_openocd_target(),
-        ],
-        cwd=root,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    try:
+        openocd = subprocess.Popen(
+            [
+                "openocd",
+                "-s",
+                scripts_dir,
+                "-f",
+                get_openocd_interface(),
+                "-f",
+                get_openocd_target(),
+            ],
+            cwd=root,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        print("OpenOCD started in background.", flush=True)
+        print("""
+Run (in GDB):
+    "target extended-remote :3333",
+    "load",
+    "monitor reset halt",
+    "break main",
+    "continue",
+        """)
+        openocd.wait() # blocking until openocd exits
+
+    finally:
+        openocd.terminate()
+        openocd.wait()
 
     # gdb_cmds = [
     #     "target extended-remote :3333",
