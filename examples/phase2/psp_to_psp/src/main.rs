@@ -106,7 +106,7 @@ fn app_main() -> ! {
     unsafe {
         addr_of_mut!(CTX_A).cast::<V7mTaskContext>().write(ctx_a);
         addr_of_mut!(CTX_B).cast::<V7mTaskContext>().write(ctx_b);
-        set_next_task_psp(ctx_b.sp);
+        set_next_task_psp(ctx_a.sp);
         set_current_task_tcb(null_mut());
         enable_interrupts();
     }
