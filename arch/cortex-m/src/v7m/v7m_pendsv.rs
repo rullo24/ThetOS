@@ -6,15 +6,18 @@ use core::ptr::{addr_of_mut, write_volatile};
 use super::v7m_exception_frame::V7mHwExceptionFrame;
 
 // REFERENCE: https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching
+// const EXC_RETURN_MSP_HANDLER_MODE: u32 = 0xFFFFFFF1;
 const EXC_RETURN_PSP_THREAD_MODE: u32 = 0xFFFFFFFD;
+const EXC_RETURN_MSP_THREAD_MODE: u32 = 0xFFFFFFF9;
 
-// TODO: check if this is correct
+// REFERENCE: https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching
 /// EXC_RETURN[2]: 0 == stacked frame on MSP; 1 == on PSP (CONTROL.SPSEL is not valid inside Handler mode)
-const EXC_RETURN_STACK_MASK: u32 = 1 << 2;
+const EXC_RETURN_STACK_MASK: u32 = EXC_RETURN_PSP_THREAD_MODE ^ EXC_RETURN_MSP_THREAD_MODE;
+const _: () = assert!(EXC_RETURN_STACK_MASK == 1 << 2); // comptime check for THREAD MODE (no MSP Handler)
 
 // REFERENCE: https://developer.arm.com/documentation/dui0552/a/the-cortex-m3-processor/programmers-model/core-registers?lang=en
 /// CONTROL.SPSEL[1] -> 0 == Thread used MSP before; 1 == Thread used PSP before
-const CONTROL_SPSEL_MASK: u32 = 1 << 1; // Thread used PSP before
+// const CONTROL_SPSEL_MASK: u32 = 1 << 1; // Thread used PSP before
 
 /// auto-stacked exception frame size (R0..xPSR)
 const V7M_HW_EXCEPTION_FRAME_BYTES: u32 = V7mHwExceptionFrame::FRAME_SIZE_BYTES as u32;
@@ -48,8 +51,6 @@ global_asm!(
     "PendSV_Handler:", // start of PendSV_Handler label (func)
 
     // 1) Which stack did Thread mode use? (CONTROL.SPSEL) -> where the HW stacked the 8-word frame.
-    // "mrs r0, control", // r0 = CONTROL (read CONTROL reg) -> CPU auto stacks interrupted context (R0..xPSR) onto whichever stack was active for Thread mode (MSP or PSP)
-    // "tst r0, {control_spsel}", // Z = ((r0 & (1 << 1)) == 0) -> tests if SPSEL (bit 1) is 0 (MSP) or 1 (PSP)
     "tst lr, {exc_return_stack}", // Z=1 if frame on MSP (e.g. 0xFFFFFFF9); Z=0 if on PSP (e.g. 0xFFFFFFFD)
     "bne .L_pendsv_thread_uses_psp", // if SPSEL=1 (branch when Z is 0), frame is on PSP -> save outgoing task
 
