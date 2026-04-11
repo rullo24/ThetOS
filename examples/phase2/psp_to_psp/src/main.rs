@@ -20,6 +20,8 @@ static mut TASK_STACK_A: TaskStackPool = TaskStackPool([0; 2048]);
 static mut TASK_STACK_B: TaskStackPool = TaskStackPool([0; 2048]);
 static mut CTX_A: MaybeUninit<V7mTaskContext> = MaybeUninit::uninit();
 static mut CTX_B: MaybeUninit<V7mTaskContext> = MaybeUninit::uninit();
+
+static mut HEARTBEAT_A: u32 = 0; // track if state/registers copied correctly
 static mut HEARTBEAT_B: u32 = 0; // track if state/registers copied correctly
 
 #[panic_handler]
@@ -32,29 +34,35 @@ fn panic(_info: &PanicInfo) -> ! {
 #[no_mangle]
 extern "C" fn task_a(_arg: *mut ()) -> ! {
     let ctx_switch = V7mContextSwitch;
-    unsafe {
-        let p_task_a = addr_of_mut!(CTX_A).cast::<V7mTaskContext>();
-        let p_task_b = addr_of_mut!(CTX_B).cast::<V7mTaskContext>();
-        set_next_task_psp((*p_task_b).sp);
-        set_current_task_tcb(p_task_a);
-        ctx_switch.trigger_pendsv_switch();
-    }
 
     loop {
-        core::hint::spin_loop();
+        unsafe {
+            HEARTBEAT_A = HEARTBEAT_A.wrapping_add(1); // increment from last
+            let p_task_a = addr_of_mut!(CTX_A).cast::<V7mTaskContext>();
+            let p_task_b = addr_of_mut!(CTX_B).cast::<V7mTaskContext>();
+            set_next_task_psp((*p_task_b).sp);
+            set_current_task_tcb(p_task_a);
+            ctx_switch.trigger_pendsv_switch();
+        }
     }
+
 }
 
 /// DESCRIPTION
 /// task B entry point
 #[no_mangle]
 extern "C" fn task_b(_arg: *mut ()) -> ! {
-    unsafe {
-        HEARTBEAT_B = HEARTBEAT_B.wrapping_add(1);
-    }
+    let ctx_switch = V7mContextSwitch;
 
     loop {
-        core::hint::spin_loop();
+        unsafe {
+            HEARTBEAT_B = HEARTBEAT_B.wrapping_add(1); // increment from last
+            let p_task_a = addr_of_mut!(CTX_A).cast::<V7mTaskContext>();
+            let p_task_b = addr_of_mut!(CTX_B).cast::<V7mTaskContext>();
+            set_next_task_psp((*p_task_b).sp);
+            set_current_task_tcb(p_task_a);
+            ctx_switch.trigger_pendsv_switch();
+        }
     }
 }
 
@@ -103,7 +111,7 @@ fn app_main() -> ! {
         enable_interrupts();
     }
 
-    // trigger context switch to change task
+    // trigger first context switch to task A (MSP -> PSP)
     ctx_switch.trigger_pendsv_switch();
 
     loop {
