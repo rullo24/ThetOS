@@ -168,6 +168,8 @@ where
             .initialise_task_context(stack_top, stack_limit, entry_point, entry_arg)
             .map_err(map_ctx_switch_err_to_kernel_err)?; // throw error upwards if fails
 
+        // TODO(phase 3): capture and store `CtxSwitchType::TaskContext` per task, then connect `sp` to arch first/next switch (e.g. `PENDSV_NEXT_PSP`) before `yield`; Phase 2 uses the primitive_switch example path.
+
         // build the stack guard context
         let mut stack_guard_ctx = build_default_stack_guard_ctx(stack_top, stack_limit)?;
         self.stack_resources 
