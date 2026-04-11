@@ -1,0 +1,64 @@
+#![no_std]
+#![no_main]
+
+// core lib imports
+use core::panic::PanicInfo;
+use core::ptr::{addr_of_mut, null_mut};
+
+// local imports
+use entry::entry;
+use cortex_m::V7mContextSwitch;
+use cortex_m::{set_current_task_tcb, set_next_task_psp};
+use nucleo_l152re as _;
+use cortex_m::enable_interrupts;
+
+#[repr(align(8))]
+static mut TASK_STACK_POOL: [u8; 2048] = [0; 2048];
+static mut TASK_HEARTBEAT: u32 = 0;
+
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
+}
+
+extern "C" fn task_entry(_arg: *mut ()) -> ! {
+    unsafe {
+        TASK_HEARTBEAT = TASK_HEARTBEAT.wrapping_add(1);
+    }
+
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+#[entry]
+fn app_main() -> ! {
+    
+    // defining stack resources
+    let pool = unsafe { &mut *addr_of_mut!(TASK_STACK_POOL) };
+    let stack_limit = pool.as_mut_ptr();
+    let stack_top = stack_limit.wrapping_add(pool.len());
+    
+    let ctx_switch = V7mContextSwitch;
+    let ctx = match ctx_switch.initialise_task_context(
+        stack_top,
+        stack_limit,
+        task_entry, // entry point (func ptr)
+        null_mut(), // no args
+    ) {
+        Ok(c) -> c,
+        Err(e) => panic!("failed to init task context: {:?}", e),
+    }
+    
+    unsafe {
+        set_next_task_psp(ctx.sp); // set next task PSP -> must match `V7mTaskContext.sp`
+        set_current_task_tcb(null_mut()); // no current task -> NULL
+        enable_interrupts(); // ensure interrupts are enabled before context switch (should already be enabled)
+    }
+
+    ctx_switch.trigger_pendsv_switch(); // trigger context switch to change task
+
+    loop {
+        core::hint::spin_loop();
+    }
+}

@@ -21,6 +21,7 @@ members = [
     "bsp/nucleo/nucleo_l152re",
     "examples/phase0/no_rtos_basic",
     "examples/phase2/pendsv_pending_probe",
+    "examples/phase2/primitive_switch",
 ]
 
 [workspace.dependencies]
