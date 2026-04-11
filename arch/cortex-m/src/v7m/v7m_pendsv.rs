@@ -8,6 +8,10 @@ use super::v7m_exception_frame::V7mHwExceptionFrame;
 // REFERENCE: https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching
 const EXC_RETURN_PSP_THREAD_MODE: u32 = 0xFFFFFFFD;
 
+// TODO: check if this is correct
+/// EXC_RETURN[2]: 0 == stacked frame on MSP; 1 == on PSP (CONTROL.SPSEL is not valid inside Handler mode)
+const EXC_RETURN_STACK_MASK: u32 = 1 << 2;
+
 // REFERENCE: https://developer.arm.com/documentation/dui0552/a/the-cortex-m3-processor/programmers-model/core-registers?lang=en
 /// CONTROL.SPSEL[1] -> 0 == Thread used MSP before; 1 == Thread used PSP before
 const CONTROL_SPSEL_MASK: u32 = 1 << 1; // Thread used PSP before
@@ -44,8 +48,9 @@ global_asm!(
     "PendSV_Handler:", // start of PendSV_Handler label (func)
 
     // 1) Which stack did Thread mode use? (CONTROL.SPSEL) -> where the HW stacked the 8-word frame.
-    "mrs r0, control", // r0 = CONTROL (read CONTROL reg) -> CPU auto stacks interrupted context (R0..xPSR) onto whichever stack was active for Thread mode (MSP or PSP)
-    "tst r0, {control_spsel}", // Z = ((r0 & (1 << 1)) == 0) -> tests if SPSEL (bit 1) is 0 (MSP) or 1 (PSP)
+    // "mrs r0, control", // r0 = CONTROL (read CONTROL reg) -> CPU auto stacks interrupted context (R0..xPSR) onto whichever stack was active for Thread mode (MSP or PSP)
+    // "tst r0, {control_spsel}", // Z = ((r0 & (1 << 1)) == 0) -> tests if SPSEL (bit 1) is 0 (MSP) or 1 (PSP)
+    "tst lr, {exc_return_stack}", // Z=1 if frame on MSP (e.g. 0xFFFFFFF9); Z=0 if on PSP (e.g. 0xFFFFFFFD)
     "bne .L_pendsv_thread_uses_psp", // if SPSEL=1 (branch when Z is 0), frame is on PSP -> save outgoing task
 
     // 2a) Thread used MSP: HW frame is on MSP -> discard it (we do not return to that thread here).
@@ -81,7 +86,8 @@ global_asm!(
     "bx r14", // trigger exception return -> HW pops hardware frame from PSP and resumes new task
 
     // labels that are replaced at compile time
-    control_spsel = const CONTROL_SPSEL_MASK,
+    // control_spsel = const CONTROL_SPSEL_MASK,
+    exc_return_stack = const EXC_RETURN_STACK_MASK,
     hw_frame_bytes = const V7M_HW_EXCEPTION_FRAME_BYTES,
     current_task = sym PENDSV_CURRENT_TASK,
     next_psp = sym PENDSV_NEXT_PSP,
