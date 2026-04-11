@@ -6,6 +6,7 @@ pub enum KernelError {
     Busy,
     InvalidConfig,
     Unsupported,
+    StackGuard,
 }
 
 /// DESCRIPTION
@@ -17,6 +18,7 @@ impl Display for KernelError {
             KernelError::Busy => f.write_str("busy"),
             KernelError::InvalidConfig => f.write_str("invalid config"),
             KernelError::Unsupported => f.write_str("unsupported"),
+            KernelError::StackGuard => f.write_str("stack guard violation"),
         }
     }
 }

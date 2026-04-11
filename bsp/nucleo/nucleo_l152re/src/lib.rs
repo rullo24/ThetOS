@@ -4,4 +4,7 @@
 use stm32l152ret6 as _;
 
 pub mod system;
+pub mod limits;
+
 pub use system::System;
+pub use limits::MAX_TASKS;

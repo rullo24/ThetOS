@@ -1,14 +1,22 @@
 
+// core lib imports
+use core::ptr::addr_of_mut;
+
 // local imports
-use cortex_m::{V7mContextSwitch, CortexMCriticalSection};
+use crate::limits::MAX_TASKS;
+use cortex_m::{V7mContextSwitch, CortexMCriticalSection, CortexMStackGuard};
+use kernel::{Kernel, KernelStackResources};
 use kernel::scheduler::FppScheduler;
-use kernel::Kernel;
 use specs::common::TaskId;
 use specs::kernel::Result;
+use specs::arch::StackGuardContext;
+
+/// global var to hold stack guard slots for static slot tables
+static mut TASK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; MAX_TASKS] = [None; MAX_TASKS];
 
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
-    kernel: Kernel<V7mContextSwitch, CortexMCriticalSection, FppScheduler>,
+    kernel: Kernel<V7mContextSwitch, CortexMCriticalSection, FppScheduler, CortexMStackGuard>,
 }
 
 impl System {
@@ -21,7 +29,11 @@ impl System {
                 V7mContextSwitch,
                 CortexMCriticalSection,
                 FppScheduler,
-                stack_pool,
+                KernelStackResources::new(
+                    stack_pool, 
+                    CortexMStackGuard,
+                    unsafe { &mut *addr_of_mut!(TASK_STACK_GUARD_SLOTS) },
+                ),
             ),
         }
     }
@@ -29,7 +41,7 @@ impl System {
     // TODO: remove this method before release
     /// DESCRIPTION
     /// request PendSV pending.
-    pub fn request_pendsv_pending(&self) {
+    pub fn request_pendsv_pending(&mut self) {
         self.kernel.yield_now();
     }
 
@@ -47,7 +59,7 @@ impl System {
 
     /// DESCRIPTION
     /// request a cooperative yield.
-    pub fn yield_now(&self) {
+    pub fn yield_now(&mut self) {
         self.kernel.yield_now();       
     }
 

@@ -2,12 +2,16 @@
 
 pub mod tcb;
 pub mod scheduler;
+pub mod stack_resources;
 
 // local imports
+pub use stack_resources::KernelStackResources;
 pub use scheduler::FppScheduler;
 use specs::arch::{
     ContextSwitch,
     ContextSwitchError,
+    StackGuard,
+    StackGuardError,
     StackGuardConfig,
     StackGuardContext,
     StackGuardMode,
@@ -28,6 +32,8 @@ fn align_up(n: usize, align: usize) -> usize {
     return (n + align - 1) / align * align;
 }
 
+/// DESCRIPTION
+/// build a default stack guard context
 #[inline]
 fn build_default_stack_guard_ctx(
     stack_top: *mut u8,
@@ -51,6 +57,7 @@ fn build_default_stack_guard_ctx(
 }
 
 /// DESCRIPTION
+/// map context switch errors to kernel errors
 fn map_ctx_switch_err_to_kernel_err(err: ContextSwitchError) -> KernelError {
     match err {
         ContextSwitchError::NullStackPointer => KernelError::InvalidConfig,
@@ -62,27 +69,39 @@ fn map_ctx_switch_err_to_kernel_err(err: ContextSwitchError) -> KernelError {
     }
 }
 
+/// DESCRIPTION
+/// map stack guard errors to kernel errors
+fn map_stack_guard_err_to_kernel_err(err: StackGuardError) -> KernelError {
+    match err {
+        StackGuardError::InvalidStackBounds => KernelError::InvalidConfig,
+        StackGuardError::GuardCorrupted => KernelError::StackGuard,
+    }
+}
+
 // hardware-blind kernel
-pub struct Kernel<CtxSwitchType, CriticalSectionType, SchedulerType>
+pub struct Kernel<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
 where
     CtxSwitchType: ContextSwitch,
     CriticalSectionType: CriticalSection,
     SchedulerType: SchedulerPolicy,
+    StackGuardImpl: StackGuard + Copy,
 {
     ctx_switch: CtxSwitchType,
     crit_section: CriticalSectionType,
     scheduler: SchedulerType,
     curr_task: Option<TaskId>,
     task_count: usize,
-    stack_pool: &'static mut [u8], // pool for task alloc
-    stack_cursor: usize, // next free stack addr in pool
+    stack_cursor: usize, // kernel runtime state
+    stack_resources: KernelStackResources<StackGuardImpl>, // BSP supplied stack resources
 }
 
-impl<CtxSwitchType, CriticalSectionType, SchedulerType> Kernel<CtxSwitchType, CriticalSectionType, SchedulerType>
+impl<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl> 
+Kernel<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
 where
     CtxSwitchType: ContextSwitch,
     CriticalSectionType: CriticalSection,
     SchedulerType: SchedulerPolicy,
+    StackGuardImpl: StackGuard + Copy,
 {
     /// DESCRIPTION
     /// create a new hardware-blind kernel instance
@@ -90,7 +109,7 @@ where
         ctx_switch: CtxSwitchType, 
         crit_section: CriticalSectionType, 
         scheduler: SchedulerType,
-        stack_pool: &'static mut [u8],
+        stack_resources: KernelStackResources<StackGuardImpl>,
     ) -> Self {
         return Self {
             ctx_switch,
@@ -98,8 +117,8 @@ where
             scheduler,
             curr_task: None,
             task_count: 0,
-            stack_pool,
-            stack_cursor: 0x0,
+            stack_cursor: 0x0, 
+            stack_resources,
         };
     }
 
@@ -112,6 +131,12 @@ where
         entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
     ) -> Result<()> {
+
+        // use stack_resources for the pool -> checking available slots for new task
+        let idx: usize = task_id.0 as usize;
+        if idx >= self.stack_resources.stack_guard_slots.len() {
+            return Err(KernelError::InvalidConfig);
+        }
         
         // read arch-specific stack alignment -> reject if zero (invalid)
         let align = CtxSwitchType::STACK_ALIGNMENT_BYTES;
@@ -129,22 +154,27 @@ where
         let cursor_aligned = align_up(self.stack_cursor, align);
         if cursor_aligned
             .checked_add(aligned_size)
-            .map_or(true, |end| end > self.stack_pool.len())
+            .map_or(true, |end| end > self.stack_resources.stack_pool.len())
         {
             return Err(KernelError::InvalidConfig);
         }
 
         // capture limit + top from stack pool and advance cursor for next spawn
-        let stack_limit = self.stack_pool.as_mut_ptr().wrapping_add(cursor_aligned);
+        let stack_limit = self.stack_resources.stack_pool.as_mut_ptr().wrapping_add(cursor_aligned);
         let stack_top = stack_limit.wrapping_add(aligned_size);
         
-        // build the stack guard context
-        let _stack_guard_ctx = build_default_stack_guard_ctx(stack_top, stack_limit)?;
-
         // initialise task context for the new task
         self.ctx_switch
             .initialise_task_context(stack_top, stack_limit, entry_point, entry_arg)
             .map_err(map_ctx_switch_err_to_kernel_err)?; // throw error upwards if fails
+
+        // build the stack guard context
+        let mut stack_guard_ctx = build_default_stack_guard_ctx(stack_top, stack_limit)?;
+        self.stack_resources 
+            .stack_guard // use BSP supplied stack guard impl
+            .initialise(&mut stack_guard_ctx)
+            .map_err(map_stack_guard_err_to_kernel_err)?; // throw error upwards if fails
+        self.stack_resources.stack_guard_slots[idx] = Some(stack_guard_ctx); // store the stack guard context for the new task
         
         // advance cursor for next spawn
         self.stack_cursor = cursor_aligned + aligned_size;
@@ -162,7 +192,22 @@ where
 
     /// DESCRIPTION
     /// trigger a voluntary context switch
-    pub fn yield_now(&self) {
+    pub fn yield_now(&mut self) {
+        if let Some(tid) = self.curr_task {
+            let i = tid.0 as usize;
+            if let Some(ctx) = self
+                .stack_resources
+                .stack_guard_slots
+                .get_mut(i)
+                .and_then(|s| s.as_mut())
+            {
+                if self.stack_resources.stack_guard.check(ctx).is_err() {
+                    panic!("stack guard violation detected");
+                }
+            }
+        }
+
+        // trigger context switch to change task
         self.ctx_switch.trigger_pendsv_switch();
     }
 

@@ -2,10 +2,19 @@
 use core::sync::atomic::{AtomicU32, Ordering};
 use core::ptr::{null_mut, addr_of_mut};
 use core::ops::FnOnce;
+use core::result::Result;
 
 // local imports
-use kernel::Kernel;
-use specs::arch::{ContextSwitch, ContextSwitchError};
+use kernel::{Kernel, KernelStackResources};
+use specs::arch::{
+    ContextSwitch, 
+    ContextSwitchError,
+    StackGuard,
+    StackGuardContext,
+    StackGuardError,
+    StackGuardMode,
+    StackGuardState,
+};
 use specs::common::TaskId;
 use specs::kernel::{CriticalSection, SchedulerPolicy, KernelError};
 
@@ -19,6 +28,54 @@ static mut POOL_SPAWN_REJECT: [u8; 1024] = [0; 1024];
 static mut POOL_CRIT: [u8; 1024] = [0; 1024];
 static mut POOL_YIELD: [u8; 1024] = [0; 1024];
 
+// required for testing static slot tables
+const TEST_MAX_TASKS: usize = 32;
+static mut MOCK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; TEST_MAX_TASKS] = [None; TEST_MAX_TASKS];
+
+#[derive(Clone, Copy)]
+struct MockStackGuard;
+
+impl StackGuard for MockStackGuard {
+
+    /// DESCRIPTION
+    /// initialise stack guard metadata and seed canary/watermark state.
+    fn initialise(
+        &self,
+        ctx: &mut StackGuardContext,
+    ) -> Result<StackGuardState, StackGuardError> {
+        if ctx.stack_limit.is_null() || ctx.stack_top.is_null() {
+            return Err(StackGuardError::InvalidStackBounds);
+        }
+        if (ctx.stack_top as usize) <= (ctx.stack_limit as usize) {
+            return Err(StackGuardError::InvalidStackBounds);
+        }
+        if matches!(ctx.config.mode, StackGuardMode::Canary) {
+            unsafe {
+                (ctx.stack_limit as *mut u32).write_volatile(ctx.config.canary_word);
+            }
+        }
+        ctx.state.low_mark = ctx.stack_limit;
+        Ok(ctx.state)
+    }
+
+    /// DESCRIPTION
+    /// verify stack guard integrity for canary/watermark mode.
+    fn check(   
+        &self,
+        ctx: &mut StackGuardContext,
+    ) -> Result<(), StackGuardError> {
+        if matches!(ctx.config.mode, StackGuardMode::Canary) {
+            let v = unsafe { (ctx.stack_limit as *const u32).read_volatile() };
+            if v != ctx.config.canary_word {
+                return Err(StackGuardError::GuardCorrupted);
+            }
+        }
+        Ok(())
+    }
+
+}
+
+#[derive(Clone, Copy)]
 struct MockContextSwitch;
 
 /// DESCRIPTION
@@ -74,6 +131,16 @@ extern "C" fn dummy_entry(_arg: *mut ()) -> ! {
     }
 }
 
+/// DESCRIPTION
+/// create a new kernel stack resources instance for testing
+fn test_resources(pool: &'static mut [u8]) -> KernelStackResources<MockStackGuard> {
+    KernelStackResources::new(
+        pool,
+        MockStackGuard,
+        unsafe { &mut *addr_of_mut!(MOCK_STACK_GUARD_SLOTS) },
+    )
+}
+
 /////////////
 // TESTING //
 /////////////
@@ -85,7 +152,7 @@ fn kernel_init_with_mocks() {
         MockContextSwitch,
         MockCriticalSection,
         MockScheduler,
-        pool,
+        test_resources(pool),
     );
 
     assert_eq!(kernel.get_task_count(), 0);
@@ -101,7 +168,7 @@ fn spawn_task_registers_first_task() {
         MockContextSwitch,
         MockCriticalSection,
         MockScheduler,
-        pool,
+        test_resources(pool),
     );
 
     let result = kernel.spawn_task(
@@ -126,7 +193,7 @@ fn spawn_task_rejects_null_stack_top() {
         MockContextSwitch,
         MockCriticalSection,
         MockScheduler,
-        pool,
+        test_resources(pool),
     );
 
     let result = kernel.spawn_task(
@@ -150,7 +217,7 @@ fn execute_in_critical_section_runs_operation() {
         MockContextSwitch,
         MockCriticalSection,
         MockScheduler,
-        pool,
+        test_resources(pool),
     );
 
     let value: usize = kernel.execute_in_critical_section(|| 42);
@@ -164,11 +231,11 @@ fn yield_now_triggers_ctx_switch() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
     let pool = unsafe { &mut *addr_of_mut!(POOL_YIELD) };
-    let kernel = Kernel::new(
+    let mut kernel = Kernel::new(
         MockContextSwitch,
         MockCriticalSection,
         MockScheduler,
-        pool,
+        test_resources(pool),
     );
 
     kernel.yield_now();
