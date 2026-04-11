@@ -15,9 +15,9 @@ use nucleo_l152re as _;
 use cortex_m::common::interrupts::enable_interrupts;
 
 #[repr(C, align(8))]
-struct TaskStackPool([u8; 2048]);
-static mut TASK_STACK_A: TaskStackPool = TaskStackPool([0; 2048]);
-static mut TASK_STACK_B: TaskStackPool = TaskStackPool([0; 2048]);
+struct TaskStackPool([u8; 4096]);
+static mut TASK_STACK_A: TaskStackPool = TaskStackPool([0; 4096]);
+static mut TASK_STACK_B: TaskStackPool = TaskStackPool([0; 4096]);
 static mut CTX_A: MaybeUninit<V7mTaskContext> = MaybeUninit::uninit();
 static mut CTX_B: MaybeUninit<V7mTaskContext> = MaybeUninit::uninit();
 
@@ -59,8 +59,8 @@ extern "C" fn task_b(_arg: *mut ()) -> ! {
             HEARTBEAT_B = HEARTBEAT_B.wrapping_add(1); // increment from last
             let p_task_a = addr_of_mut!(CTX_A).cast::<V7mTaskContext>();
             let p_task_b = addr_of_mut!(CTX_B).cast::<V7mTaskContext>();
-            set_next_task_psp((*p_task_b).sp);
-            set_current_task_tcb(p_task_a);
+            set_next_task_psp((*p_task_a).sp);
+            set_current_task_tcb(p_task_b);
             ctx_switch.trigger_pendsv_switch();
         }
     }
