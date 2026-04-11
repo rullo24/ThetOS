@@ -8,6 +8,7 @@ use core::ptr::addr_of_mut;
 // local imports
 use entry::entry;
 use nucleo_l152re::System;
+use cortex_m::{disable_interrupts, enable_interrupts};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -21,10 +22,10 @@ fn app_main() -> ! {
     let mut x: u32 = 0;
     let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
     let mut system = System::new_with_pool(p_stack_pool);
-    
-    unsafe { core::arch::asm!("cpsid i", options(nomem, nostack)); } // disable interrupts
+
+    disable_interrupts();
     system.request_pendsv_pending(); // request PendSV pending (check in GDB)
-    unsafe { core::arch::asm!("cpsie i", options(nomem, nostack)); } // enable interrupts
+    enable_interrupts();
 
     // to avoid exit
     loop {
