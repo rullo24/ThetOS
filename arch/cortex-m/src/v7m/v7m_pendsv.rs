@@ -12,7 +12,7 @@ const EXC_RETURN_MSP_THREAD_MODE: u32 = 0xFFFFFFF9;
 
 // REFERENCE: https://interrupt.memfault.com/blog/cortex-m-rtos-context-switching
 /// EXC_RETURN[2]: 0 == stacked frame on MSP; 1 == on PSP (CONTROL.SPSEL is not valid inside Handler mode)
-const EXC_RETURN_STACK_MASK: u32 = EXC_RETURN_PSP_THREAD_MODE ^ EXC_RETURN_MSP_THREAD_MODE;
+const EXC_RETURN_THREAD_STACK_MASK: u32 = EXC_RETURN_PSP_THREAD_MODE ^ EXC_RETURN_MSP_THREAD_MODE;
 const _: () = assert!(EXC_RETURN_STACK_MASK == 1 << 2); // comptime check for THREAD MODE (no MSP Handler)
 
 // REFERENCE: https://developer.arm.com/documentation/dui0552/a/the-cortex-m3-processor/programmers-model/core-registers?lang=en
@@ -88,7 +88,7 @@ global_asm!(
 
     // labels that are replaced at compile time
     // control_spsel = const CONTROL_SPSEL_MASK,
-    exc_return_stack = const EXC_RETURN_STACK_MASK,
+    exc_return_stack = const EXC_RETURN_THREAD_STACK_MASK,
     hw_frame_bytes = const V7M_HW_EXCEPTION_FRAME_BYTES,
     current_task = sym PENDSV_CURRENT_TASK,
     next_psp = sym PENDSV_NEXT_PSP,
