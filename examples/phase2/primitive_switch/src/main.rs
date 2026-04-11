@@ -23,6 +23,9 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
+/// DESCRIPTION
+/// task entry point -> increment heartbeat and spin loop
+#[no_mangle]
 extern "C" fn task_entry(_arg: *mut ()) -> ! {
     unsafe {
         TASK_HEARTBEAT = TASK_HEARTBEAT.wrapping_add(1);
