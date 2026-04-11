@@ -8,6 +8,7 @@ use specs::arch::{
     StackGuardState,
 };
 
+#[derive(Clone, Copy)]
 pub struct CortexMStackGuard;
 
 impl CortexMStackGuard {
