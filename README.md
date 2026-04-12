@@ -92,6 +92,8 @@ Authoritative module boundaries are defined in `docs/roadmap.md` under `Architec
 
 **Phase 2 (Gatekeeper 2) — hardware validation:** build, flash, GDB, and pass/fail checks are in [docs/runbooks/phase2_gatekeeper.md](docs/runbooks/phase2_gatekeeper.md).
 
+**Phase 3 (minimal kernel & scheduler):** implementation guide is [docs/phase3/phase3_minimal_kernel.md](docs/phase3/phase3_minimal_kernel.md) (Gatekeeper 3 runbook to follow).
+
 ## Building
 
 **Prerequisites:** Install the Rust toolchain (e.g. via [rustup](https://rustup.rs)). For embedded targets, install the required target before building (the target is set in `.cargo/config.toml`). For example, for ARM Cortex-M3:
