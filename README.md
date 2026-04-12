@@ -90,6 +90,8 @@ The system is organised as a **Cargo Workspace** to enforce strict compile-time 
 The phased development plan, gatekeepers, and milestones are defined in [docs/roadmap.md](docs/roadmap.md).
 Authoritative module boundaries are defined in `docs/roadmap.md` under `Architecture Boundaries`.
 
+**Phase 2 (Gatekeeper 2) — hardware validation:** build, flash, GDB, and pass/fail checks are in [docs/runbooks/phase2_gatekeeper.md](docs/runbooks/phase2_gatekeeper.md).
+
 ## Building
 
 **Prerequisites:** Install the Rust toolchain (e.g. via [rustup](https://rustup.rs)). For embedded targets, install the required target before building (the target is set in `.cargo/config.toml`). For example, for ARM Cortex-M3:

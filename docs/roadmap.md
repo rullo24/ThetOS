@@ -93,7 +93,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
     * **Stack Guard Evidence**: Verified detection of intentional stack corruption via GDB.
 * **Tests that must pass:** None (validation is via GDB and hardware; see Gatekeeper 2).
 * **Gatekeeper 2:** A "Primitive Switch" demo where the CPU successfully jumps from `main()` to a single hard-coded function, verified via GDB register inspection.
-* **Detailed implementation guide:** `docs/phase2_hardware_port.md`.
+* **Detailed implementation guide:** [docs/phase2/phase2_hardware_port.md](phase2/phase2_hardware_port.md).
 
 ---
 
