@@ -3,9 +3,21 @@ pub mod error;
 pub mod scheduler_policy;
 pub mod tcb;
 pub mod task_priority;
+pub mod system_timer;
 
 pub use critical_section::CriticalSection;
-pub use error::{KernelError, Result};
+pub use error::{
+    KernelError, 
+    Result
+};
 pub use scheduler_policy::SchedulerPolicy;
-pub use tcb::{CoreTcb, StackBounds, TaskState};
+pub use tcb::{
+    CoreTcb, 
+    StackBounds, 
+    TaskState
+};
 pub use task_priority::TaskPriority;
+pub use system_timer::{
+    SystemTimer, 
+    TickAction
+};
