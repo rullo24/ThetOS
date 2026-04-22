@@ -8,6 +8,7 @@ pub struct TaskPriority(u8);
 impl TaskPriority {
     pub const MIN: u8 = 0;
     pub const MAX: u8 = 31;
+    pub const TASK_LEVELS: usize = (Self::MAX as usize) - (Self::MIN as usize) + 1;
     pub const DEFAULT: Self = Self(15); // middle priority
 
     /// DESCRIPTION

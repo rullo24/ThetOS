@@ -187,7 +187,7 @@ where
         
         // advance cursor for next spawn
         self.stack_cursor = cursor_aligned + aligned_size;
-        self.scheduler.register_task(task_id, priority);
+        self.scheduler.register_task(task_id, priority)?;
         self.task_count += 1; 
 
         // checking if no task is currently running

@@ -1,16 +1,19 @@
 // local imports
 use crate::common::TaskId;
-use crate::kernel::TaskPriority;
+use crate::kernel::{
+    Result,
+    TaskPriority,
+};
 
 /// kernel scheduler policy contract.
 pub trait SchedulerPolicy {
     /// DESCRIPTION
     /// register a new task with its base priority.
-    fn register_task(&mut self, task_id: TaskId, priority: TaskPriority);
+    fn register_task(&mut self, task_id: TaskId, priority: TaskPriority) -> Result<()>;
 
     /// DESCRIPTION
     /// mark task runnable and place it in policy-managed ready structures.
-    fn enqueue_runnable(&mut self, task_id: TaskId, priority: TaskPriority);
+    fn enqueue_runnable(&mut self, task_id: TaskId, priority: TaskPriority) -> Result<()>;
 
     /// DESCRIPTION
     /// choose next runnable task according to policy ordering.

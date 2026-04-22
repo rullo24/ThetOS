@@ -28,7 +28,7 @@ impl System {
             kernel: Kernel::new(
                 V7mContextSwitch,
                 CortexMCriticalSection,
-                FppScheduler,
+                FppScheduler::new(),
                 KernelStackResources::new(
                     stack_pool, 
                     CortexMStackGuard,

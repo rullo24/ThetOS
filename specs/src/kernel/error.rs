@@ -8,6 +8,7 @@ pub enum KernelError {
     Unsupported,
     StackGuard,
     InvalidPriority,
+    ReadyQueueFull,
 }
 
 /// DESCRIPTION
@@ -21,6 +22,7 @@ impl Display for KernelError {
             KernelError::Unsupported => f.write_str("unsupported"),
             KernelError::StackGuard => f.write_str("stack guard violation"),
             KernelError::InvalidPriority => f.write_str("invalid priority"),
+            KernelError::ReadyQueueFull => f.write_str("ready queue full"),
         }
     }
 }
