@@ -5,6 +5,7 @@ pub mod scheduler;
 pub mod stack_resources;
 
 // local imports
+use crate::tcb::TaskControlBlock;
 pub use stack_resources::KernelStackResources;
 pub use scheduler::FppScheduler;
 use specs::arch::{
@@ -23,8 +24,13 @@ use specs::kernel::{
     SchedulerPolicy, 
     KernelError, 
     Result, 
-    TaskPriority
+    TaskPriority,
+    TaskState,
+    CoreTcb,
 };
+
+// constants
+const MAX_TASKS: usize = 32;
 
 // must cover at least the initial task frame (hw + callee) and any padding
 const MIN_TASK_STACK_SIZE_BYTES: usize = 512; // arbitrary min size to cover all targets
@@ -99,6 +105,7 @@ where
     task_count: usize,
     stack_cursor: usize, // kernel runtime state
     stack_resources: KernelStackResources<StackGuardImpl>, // BSP supplied stack resources
+    tcb_list: [Option<TaskControlBlock<CtxSwitchType::TaskContext>>; MAX_TASKS],
 }
 
 impl<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl> 
@@ -125,6 +132,7 @@ where
             task_count: 0,
             stack_cursor: 0x0, 
             stack_resources,
+            tcb_list: core::array::from_fn(|_| None),
         };
     }
 
@@ -171,7 +179,8 @@ where
         let stack_top = stack_limit.wrapping_add(aligned_size);
         
         // initialise task context for the new task
-        self.ctx_switch
+        let task_context = self
+            .ctx_switch
             .initialise_task_context(stack_top, stack_limit, entry_point, entry_arg)
             .map_err(map_ctx_switch_err_to_kernel_err)?; // throw error upwards if fails
 
@@ -184,6 +193,19 @@ where
             .initialise(&mut stack_guard_ctx)
             .map_err(map_stack_guard_err_to_kernel_err)?; // throw error upwards if fails
         self.stack_resources.stack_guard_slots[idx] = Some(stack_guard_ctx); // store the stack guard context for the new task
+
+        // TCB creation
+        self.tcb_list[idx] = Some(TaskControlBlock {
+            task_id,
+            stack_bounds: specs::kernel::StackBounds {
+                bottom: stack_limit,
+                top: stack_top,
+            },
+            task_state: TaskState::Ready,
+            task_context, // capture from initialise_task_context
+            stack_guard_ctx,
+            task_priority: priority,
+        });
         
         // advance cursor for next spawn
         self.stack_cursor = cursor_aligned + aligned_size;
@@ -201,7 +223,7 @@ where
 
     /// DESCRIPTION
     /// trigger a voluntary context switch
-    pub fn yield_now(&mut self) {
+    pub fn yield_now(&mut self) -> Result<()> {
         if let Some(tid) = self.curr_task {
             let i = tid.0 as usize;
             if let Some(ctx) = self
@@ -216,8 +238,24 @@ where
             }
         }
 
+        // current running task -> ready + requeue
+        if let Some(current_task_id) = self.curr_task {
+            self.set_task_state(current_task_id, TaskState::Ready)?;
+            let idx = current_task_id.0 as usize;
+            if let Some(tcb) = self.tcb_list[idx].as_ref() {
+                self.scheduler.enqueue_runnable(current_task_id, tcb.get_priority())?;
+            }
+        }
+
+        // select next runnable task -> running
+        if let Some(next_task_id) = self.scheduler.select_next_runnable() {
+            self.set_task_state(next_task_id, TaskState::Running)?;
+            self.curr_task = Some(next_task_id);
+        }
+
         // trigger context switch to change task
         self.ctx_switch.trigger_pendsv_switch();
+        Ok(()) // success
     }
 
     /// DESCRIPTION
@@ -239,4 +277,14 @@ where
     {
         return self.crit_section.with_execute(operation);
     }
+
+    /// DESCRIPTION
+    /// update task state
+    fn set_task_state(&mut self, task_id: TaskId, state: TaskState) -> Result<()> {
+        let idx = task_id.0 as usize;
+        let tcb = self.tcb_list[idx].as_mut().ok_or(KernelError::InvalidState)?; // capture TCB or error if invalid
+        tcb.set_state(state); // update task state
+        Ok(())
+    }
+
 }

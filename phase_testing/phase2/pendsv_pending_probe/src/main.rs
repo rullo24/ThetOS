@@ -24,7 +24,7 @@ fn app_main() -> ! {
     let mut system = System::new_with_pool(p_stack_pool);
 
     disable_interrupts();
-    system.request_pendsv_pending(); // request PendSV pending (check in GDB)
+    system.request_pendsv_pending().unwrap(); // request PendSV pending (check in GDB)
     enable_interrupts();
 
     // to avoid exit

@@ -41,8 +41,8 @@ impl System {
     // TODO: remove this method before release
     /// DESCRIPTION
     /// request PendSV pending.
-    pub fn request_pendsv_pending(&mut self) {
-        self.kernel.yield_now();
+    pub fn request_pendsv_pending(&mut self) -> Result<()> {
+        self.kernel.yield_now()
     }
 
     /// DESCRIPTION
@@ -60,8 +60,8 @@ impl System {
 
     /// DESCRIPTION
     /// request a cooperative yield.
-    pub fn yield_now(&mut self) {
-        self.kernel.yield_now();       
+    pub fn yield_now(&mut self) -> Result<()> {
+        self.kernel.yield_now()
     }
 
     /// DESCRIPTION

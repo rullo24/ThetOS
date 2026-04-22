@@ -105,6 +105,6 @@ fn yield_now_triggers_ctx_switch() {
         test_resources(pool),
     );
 
-    kernel.yield_now();
+    kernel.yield_now().unwrap();
     assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 1);
 }
