@@ -1,7 +1,12 @@
 // local imports
 use specs::arch::StackGuardContext;
 use specs::common::TaskId;
-use specs::kernel::{CoreTcb, StackBounds, TaskState};
+use specs::kernel::{
+    CoreTcb, 
+    StackBounds, 
+    TaskPriority, 
+    TaskState
+};
 
 #[derive(Clone, Copy, Debug)]
 pub struct TaskControlBlock<Context> {
@@ -10,6 +15,7 @@ pub struct TaskControlBlock<Context> {
     pub task_state: TaskState,
     pub task_context: Context,
     pub stack_guard_ctx: StackGuardContext,
+    pub task_priority: TaskPriority,
 }
 
 impl<Context> CoreTcb<Context> for TaskControlBlock<Context> {
@@ -48,4 +54,11 @@ impl<Context> CoreTcb<Context> for TaskControlBlock<Context> {
     fn set_state(&mut self, state: TaskState) {
         self.task_state = state;
     }
+
+    /// DESCRIPTION
+    /// returns task priority.
+    fn get_priority(&self) -> TaskPriority {
+        self.task_priority
+    }
+
 }

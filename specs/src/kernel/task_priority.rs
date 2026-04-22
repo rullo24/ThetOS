@@ -1,3 +1,4 @@
+// local imports
 use crate::kernel::{KernelError, Result};
 
 /// fixed-priority used by scheduler
@@ -13,7 +14,7 @@ impl TaskPriority {
     /// creates a priority if the value is within supported bounds
     pub const fn new(level: u8) -> Result<Self> {
         if level < Self::MIN || level > Self::MAX {
-            Err(KernelError::InvalidPriority)
+            return Err(KernelError::InvalidPriority);
         }
         Ok(Self(level))
     }

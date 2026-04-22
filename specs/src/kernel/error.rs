@@ -7,6 +7,7 @@ pub enum KernelError {
     InvalidConfig,
     Unsupported,
     StackGuard,
+    InvalidPriority,
 }
 
 /// DESCRIPTION

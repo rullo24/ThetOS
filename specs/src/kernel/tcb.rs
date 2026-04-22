@@ -1,4 +1,5 @@
 use crate::common::TaskId;
+use crate::kernel::TaskPriority;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum TaskState {
@@ -20,4 +21,5 @@ pub trait CoreTcb<Context> {
     fn get_context_mut(&mut self) -> &mut Context;
     fn get_state(&self) -> TaskState;
     fn set_state(&mut self, state: TaskState);
+    fn get_priority(&self) -> TaskPriority;
 }
