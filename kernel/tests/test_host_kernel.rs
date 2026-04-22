@@ -16,7 +16,12 @@ use specs::arch::{
     StackGuardState,
 };
 use specs::common::TaskId;
-use specs::kernel::{CriticalSection, SchedulerPolicy, KernelError};
+use specs::kernel::{
+    CriticalSection, 
+    SchedulerPolicy, 
+    KernelError, 
+    TaskPriority
+};
 
 // global var to track num of times context switch is triggered
 static CTX_SWITCH_TRIGGER_COUNT: AtomicU32 = AtomicU32::new(0);
@@ -108,8 +113,17 @@ struct MockCriticalSection;
 struct MockScheduler;
 
 impl SchedulerPolicy for MockScheduler {
-    fn on_task_spawn(&mut self, _task_id: TaskId) {
+    fn register_task(&mut self, _task_id: TaskId, _priority: TaskPriority) {
         // do nothing...
+    }
+    fn enqueue_runnable(&mut self, _task_id: TaskId, _priority: TaskPriority) {
+        // do nothing...
+    }
+    fn select_next_runnable(&mut self) -> Option<TaskId> {
+        None
+    }
+    fn should_preempt_current(&self, _current: Option<(TaskId, TaskPriority)>, _candidate: (TaskId, TaskPriority)) -> bool {
+        false
     }
 }
 
@@ -173,6 +187,7 @@ fn spawn_task_registers_first_task() {
 
     let result = kernel.spawn_task(
         TaskId(1),
+        TaskPriority::new(1).unwrap(),
         1024,
         dummy_entry, // does nothing
         null_mut(), // no argument
@@ -198,6 +213,7 @@ fn spawn_task_rejects_null_stack_top() {
 
     let result = kernel.spawn_task(
         TaskId(1),
+        TaskPriority::new(1).unwrap(),
         32, // too small stack size
         dummy_entry, // does nothing
         null_mut(), // no argument

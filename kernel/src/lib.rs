@@ -18,7 +18,13 @@ use specs::arch::{
     StackGuardState,
 };
 use specs::common::TaskId;
-use specs::kernel::{CriticalSection, SchedulerPolicy, KernelError, Result};
+use specs::kernel::{
+    CriticalSection, 
+    SchedulerPolicy, 
+    KernelError, 
+    Result, 
+    TaskPriority
+};
 
 // must cover at least the initial task frame (hw + callee) and any padding
 const MIN_TASK_STACK_SIZE_BYTES: usize = 512; // arbitrary min size to cover all targets
@@ -127,6 +133,7 @@ where
     pub fn spawn_task(
         &mut self,
         task_id: TaskId,
+        priority: TaskPriority,
         stack_size: usize,
         entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
@@ -180,7 +187,7 @@ where
         
         // advance cursor for next spawn
         self.stack_cursor = cursor_aligned + aligned_size;
-        self.scheduler.on_task_spawn(task_id);
+        self.scheduler.register_task(task_id, priority);
         self.task_count += 1; 
 
         // checking if no task is currently running
