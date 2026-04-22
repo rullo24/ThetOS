@@ -90,8 +90,16 @@ impl SchedulerPolicy for FppScheduler {
 
     /// DESCRIPTION
     /// decide whether candidate should preempt current under policy rules.
-    fn should_preempt_current(&self, _current: Option<(TaskId, TaskPriority)>, _candidate: (TaskId, TaskPriority)) -> bool {
-        return false; // TODO: to be implemented in phase 3
+    fn should_preempt_current(&self, current: Option<(TaskId, TaskPriority)>, candidate: (TaskId, TaskPriority)) -> bool {
+        let candidate_priority: u8 = candidate.1.as_u8(); // capture TaskPriority item
+
+        match current {
+            None => true,
+            Some((_, current_priority)) => {
+                // priority convention -> lower val is higher priority
+                candidate_priority < current_priority.as_u8()
+            },
+        }
     }
 
 }

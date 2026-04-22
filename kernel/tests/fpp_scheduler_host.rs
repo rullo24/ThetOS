@@ -36,3 +36,38 @@ fn preserves_fifo_within_same_priority() {
     assert_eq!(scheduler.select_next_runnable(), Some(TaskId(12)));
     assert_eq!(scheduler.select_next_runnable(), None);
 }
+
+#[test]
+fn preempts_when_no_current_task() {
+    let scheduler = FppScheduler::new();
+    let candidate = (TaskId(100), TaskPriority::new(3).unwrap());
+
+    assert!(scheduler.should_preempt_current(None, candidate));
+}
+
+#[test]
+fn preempts_when_candidate_has_higher_priority() {
+    let scheduler = FppScheduler::new();
+    let current = Some((TaskId(1), TaskPriority::new(10).unwrap()));
+    let candidate = (TaskId(2), TaskPriority::new(5).unwrap());
+
+    assert!(scheduler.should_preempt_current(current, candidate));
+}
+
+#[test]
+fn does_not_preempt_when_candidate_has_lower_priority() {
+    let scheduler = FppScheduler::new();
+    let current = Some((TaskId(1), TaskPriority::new(2).unwrap()));
+    let candidate = (TaskId(2), TaskPriority::new(10).unwrap());
+
+    assert!(!scheduler.should_preempt_current(current, candidate));
+}
+
+#[test]
+fn does_not_preempt_when_same_priority() {
+    let scheduler = FppScheduler::new();
+    let current = Some((TaskId(1), TaskPriority::new(5).unwrap()));
+    let candidate = (TaskId(2), TaskPriority::new(5).unwrap());
+
+    assert!(!scheduler.should_preempt_current(current, candidate));
+}
