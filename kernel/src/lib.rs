@@ -132,7 +132,7 @@ where
             task_count: 0,
             stack_cursor: 0x0, 
             stack_resources,
-            tcb_list: core::array::from_fn(|_| None),
+            tcb_list: core::array::from_fn(|_| None), // initialise all TCBs to None
         };
     }
 
