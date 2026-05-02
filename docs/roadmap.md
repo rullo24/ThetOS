@@ -116,45 +116,53 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 
 ---
 
-## Phase 4: Safety-Critical Drivers (Expected: 5 weeks)
-**Objective:** Prove the "Typestate" safety claims in the problem statement.
+## Phase 4: Safety-Critical Drivers (Concurrent with Phase 5)
+**Objective:** Implement typestate-driven drivers as required for RC car control.
 
 * **Tasks:**
-    * Implement the STM32 UART driver in `drivers/uart` using the `Uart` trait.
-    * **Apply the Typestate Pattern**: Ensure `write_byte()` is inaccessible until the `init()` method has returned a valid state.
-    * Implement the GPIO driver with compile-time mode checking.
+    * Implement the STM32 GPIO driver with compile-time mode checking (required for motor/servo control).
+    * Implement the STM32 UART driver in `drivers/uart` using the `Uart` trait (required for sensor/debug communication).
+    * **Apply the Typestate Pattern**: Ensure methods like `write_byte()` and `set_high()` are inaccessible until the device `init()` has returned a valid state.
+    * Add PWM driver with typestate for motor speed control (as needed).
 * **Deliverables:**
-    * **Typestate Driver API**: Drivers that use generic states (e.g., `Pin<Input>` vs `Pin<Output>`) to restrict method availability.
-    * **Error Handling**: Implementation of hardware-specific `Error` types associated with the `Uart` and `Gpio` traits.
-* **Tests that must pass:** A compile-fail test (e.g. using `trybuild` or a `tests/` crate that expects compilation failure) that verifies: code that calls `write_byte()` (or equivalent) before completing the UART `init()` sequence does not compile. Running `cargo test` (or the script that runs the compile-fail check) passes when this illegal usage is rejected by the compiler.
-* **Gatekeeper 4:** Test-case script proving the code fails to compile if the UART setup sequence is violated.
+    * **Typestate Driver API**: Drivers that use generic states (e.g., `Pin<Input>` vs `Pin<Output>`, `Uart<Uninitialized>` vs `Uart<Active>`) to restrict method availability at compile time.
+    * **Error Handling**: Implementation of hardware-specific `Error` types associated with the `Uart`, `Gpio`, and `Pwm` traits.
+    * **Compile-Fail Tests**: Verification that illegal hardware state access is rejected by the compiler.
+* **Tests that must pass:** Compile-fail tests (e.g. using `trybuild`) verifying: (1) code that calls `write_byte()` before UART `init()` does not compile; (2) code that calls `set_high()` on an `Input` pin does not compile. Running `cargo test` passes when illegal usage is rejected.
+* **Gatekeeper 4:** Test-case script proving the code fails to compile if driver setup sequences are violated.
 
 ---
 
-## Phase 5: Verification & Comparative Analysis (Expected: 5 weeks)
-**Goal:** Collect the empirical data required for the 60-page thesis report.
+## Phase 5: RC Car Integration & Real-World Validation (Expected: 5 weeks, Concurrent with Phase 4)
+**Goal:** Demonstrate the ThetOS RTOS controlling a real mobile robot, validating practical applicability.
 
 * **Tasks:**
-    * **The "Failure Suite"**: Develop 5 intentional "Illegal" C programs (FreeRTOS) and 5 equivalent Rust programs.
-    * **Benchmarking**: Measure Context-Switch latency in CPU cycles using a Logic Analyser or the DWT Cycle Counter.
-    * **Static Dispatch Proof**: Use `cargo-bloat` or `objdump` to prove that generic traits were inlined with zero runtime overhead.
+    * **RC Car Hardware Integration**: Wire motor driver, servo controller, and sensor inputs to the STM32 board.
+    * **Multi-Task Application**: Develop concurrent tasks for motor control, steering, sensor polling, and optional telemetry.
+    * **Real-Time Validation**: Verify that the scheduler meets timing constraints under real-world load (motor acceleration, steering response).
+    * **Demonstrate Typestate Safety**: Show that drivers enforce compile-time state machine guarantees in the RC car application.
 * **Deliverables:**
-    * **Comparative Matrix**: A spreadsheet containing code-size and performance metrics vs. FreeRTOS.
-* **Tests that must pass:** No new automated test suite; deliverables are data and methodology. The failure suite and benchmark procedure must be documented and reproducible so results can be re-run for review.
-* **Gatekeeper 5:** A completed data set comparing Rust RTOS vs. FreeRTOS, ready for academic review.
+    * **Functional RC Car**: A moving, steerable robot controlled by ThetOS.
+    * **Multi-Task Application Code**: Example firmware demonstrating concurrent task execution in a real system.
+    * **Video Demonstration**: Recorded evidence of the RC car operating autonomously or via remote control.
+* **Tests that must pass:** Integration tests on physical hardware: (1) Motor accelerates/decelerates smoothly under task control; (2) Steering servo responds to commands with <X ms latency; (3) Multiple concurrent tasks (motor, steering, sensor) execute without race conditions or deadline misses.
+* **Gatekeeper 5:** Functional RC car demonstrating that ThetOS can orchestrate real-time control of a complex embedded system with multiple concurrent tasks.
 
 ---
 
-## Phase 6: Final Polish & Submission (Expected: Due date submission)
-**Objective:** Finalise the "Plug and Play" evidence and complete the report.
+## Phase 6: Final Polish & Thesis Submission (Expected: Due date submission)
+**Objective:** Finalise evidence, integrate RC car demonstration into thesis narrative, and complete submission.
 
 * **Tasks:**
     * Finalise the `examples/` folder to demonstrate how a new board can be plugged in without changing kernel logic.
-    * Final proofread and submission of the thesis document.
+    * Document the RC car application as a case study demonstrating practical RTOS capabilities.
+    * Write the 60-page thesis report integrating theory (static dispatch, typestate), implementation evidence, and RC car demonstration.
+    * Final proofread, formatting compliance, and submission.
 * **Final Deliverable:**
-    * **Production Repository**: Fully commented, documented, and linted source code.
-    * **Thesis PDF**: The submitted 60-page technical document.
-* **Tests that must pass:** All tests from Phases 1, 3, and 4 continue to pass; no regressions.
+    * **Production Repository**: Fully commented, documented, and linted source code with RC car example.
+    * **Thesis PDF**: The submitted technical document with RC car case study as proof-of-concept.
+    * **RC Car Demonstration**: Video and/or live demonstration showing ThetOS-controlled RC car in operation.
+* **Tests that must pass:** All tests from Phases 1, 3, 4, and 5 continue to pass; no regressions. RC car operates reliably in demonstration conditions.
 
 ---
 
@@ -165,6 +173,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
 | **0** | Hardware Sanity & Panic Handler | LED Blink + Verified "Safe Halt" on code panic. |
 | **1** | Build Pipeline & Host Unit Tests | `cargo test` success on x86 for kernel logic. |
 | **2** | Primitive Switch & Stack Guard | Validated CPU register state + Verified Fault on Stack Overflow. |
-| **3** | Round-Robin Scheduler & Atomics | Simultaneous task execution + Race-condition verification. |
-| **4** | Typestate Drivers | Compilation failure on attempted illegal hardware state access. |
-| **5** | Empirical Benchmark Report | Comparative cycle-count and binary-size analysis vs FreeRTOS (C). |
+| **3** | Scheduler & Critical Sections | Multi-blinky on hardware + Race-condition verification. |
+| **4** | Typestate Drivers (Demand-Driven) | Compilation failure on attempted illegal hardware state access; GPIO/UART/PWM working in RC car application. |
+| **5** | RC Car Integration & Real-Time Validation | Functional RC car demonstrating multi-task concurrent control and real-time responsiveness. |
+| **6** | Thesis Submission with Case Study | 60-page thesis integrating theory, implementation, and RC car demonstration as proof-of-concept. |
