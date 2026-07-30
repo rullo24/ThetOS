@@ -203,6 +203,12 @@ where
             .map_err(map_stack_guard_err_to_kernel_err)?; // throw error upwards if fails
         self.stack_resources.stack_guard_slots[idx] = Some(stack_guard_ctx); // store the stack guard context for the new task
 
+        // a task spawned while nothing else is running becomes curr_task
+        // directly -> it must not also sit in the ready queue, or it ends up
+        // simultaneously "running" and "ready" and gets reselected on its
+        // own first yield/reschedule instead of letting other tasks run.
+        let becomes_current = self.curr_task.is_none();
+
         // TCB creation
         self.tcb_list[idx] = Some(TaskControlBlock {
             task_id,
@@ -210,7 +216,7 @@ where
                 bottom: stack_limit,
                 top: stack_top,
             },
-            task_state: TaskState::Ready,
+            task_state: if becomes_current { TaskState::Running } else { TaskState::Ready },
             task_context, // capture from initialise_task_context
             stack_guard_ctx,
             task_priority: priority,
@@ -218,13 +224,13 @@ where
 
         // advance cursor for next spawn
         self.stack_cursor = cursor_aligned + aligned_size;
-        self.scheduler.register_task(task_id, priority)?;
-        self.task_count += 1;
 
-        // checking if no task is currently running
-        if self.curr_task.is_none() {
+        if becomes_current {
             self.curr_task = Some(task_id); // setting the new task as the current task
+        } else {
+            self.scheduler.register_task(task_id, priority)?;
         }
+        self.task_count += 1;
 
         return Ok(()); // success
     }
