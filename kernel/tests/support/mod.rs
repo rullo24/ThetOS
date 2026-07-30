@@ -18,6 +18,9 @@ pub static mut POOL_SPAWN_OK: [u8; 1024] = [0; 1024];
 pub static mut POOL_SPAWN_REJECT: [u8; 1024] = [0; 1024];
 pub static mut POOL_CRIT: [u8; 1024] = [0; 1024];
 pub static mut POOL_YIELD: [u8; 1024] = [0; 1024];
+pub static mut POOL_TICK_SWITCH: [u8; 4096] = [0; 4096];
+pub static mut POOL_TICK_NO_ACTION: [u8; 4096] = [0; 4096];
+pub static mut POOL_TICK_SINGLE_TASK: [u8; 1024] = [0; 1024];
 
 const TEST_MAX_TASKS: usize = 32;
 static mut MOCK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; TEST_MAX_TASKS] =
