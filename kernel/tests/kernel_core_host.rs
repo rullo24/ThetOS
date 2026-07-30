@@ -2,7 +2,7 @@ use core::ptr::{addr_of_mut, null_mut};
 use core::sync::atomic::Ordering;
 use kernel::Kernel;
 use specs::common::TaskId;
-use specs::kernel::{KernelError, TaskPriority};
+use specs::kernel::{KernelError, TaskPriority, TickAction};
 
 mod support;
 
@@ -12,6 +12,8 @@ use support::{
     POOL_YIELD,
 };
 
+use crate::support::MockSystemTimer;
+
 #[test]
 fn kernel_init_with_mocks() {
     let pool = unsafe { &mut *addr_of_mut!(POOL_KERNEL_INIT) };
@@ -20,6 +22,9 @@ fn kernel_init_with_mocks() {
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
+        MockSystemTimer {
+            next_action: TickAction::None,
+        },
     );
 
     assert_eq!(kernel.get_task_count(), 0);
@@ -36,6 +41,9 @@ fn spawn_task_registers_first_task() {
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
+        MockSystemTimer {
+            next_action: TickAction::None,
+        },
     );
 
     let result = kernel.spawn_task(
@@ -61,6 +69,9 @@ fn spawn_task_rejects_null_stack_top() {
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
+        MockSystemTimer {
+            next_action: TickAction::None,
+        },
     );
 
     let result = kernel.spawn_task(
@@ -86,6 +97,9 @@ fn execute_in_critical_section_runs_operation() {
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
+        MockSystemTimer {
+            next_action: TickAction::None,
+        },
     );
 
     let value: usize = kernel.execute_in_critical_section(|_kernel| 42);
@@ -102,6 +116,9 @@ fn yield_now_triggers_ctx_switch() {
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
+        MockSystemTimer {
+            next_action: TickAction::None,
+        },
     );
 
     kernel.yield_now().unwrap();

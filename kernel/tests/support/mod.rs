@@ -8,7 +8,9 @@ use specs::arch::{
     StackGuardMode, StackGuardState,
 };
 use specs::common::TaskId;
-use specs::kernel::{CriticalSection, KernelError, SchedulerPolicy, TaskPriority};
+use specs::kernel::{
+    CriticalSection, KernelError, SchedulerPolicy, SystemTimer, TaskPriority, TickAction,
+};
 
 pub static CTX_SWITCH_TRIGGER_COUNT: AtomicU32 = AtomicU32::new(0);
 pub static mut POOL_KERNEL_INIT: [u8; 1024] = [0; 1024];
@@ -128,4 +130,32 @@ pub fn test_resources(pool: &'static mut [u8]) -> KernelStackResources<MockStack
     KernelStackResources::new(pool, MockStackGuard, unsafe {
         &mut *addr_of_mut!(MOCK_STACK_GUARD_SLOTS)
     })
+}
+
+pub struct MockSystemTimer {
+    pub next_action: TickAction,
+}
+
+impl SystemTimer for MockSystemTimer {
+    type Error = ();
+
+    fn initialise(&mut self, _reload_ticks: u32) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn start(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn stop(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn acknowledge_tick_interrupt(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn on_tick_interrupt(&mut self) -> Result<TickAction, Self::Error> {
+        Ok(self.next_action)
+    }
 }

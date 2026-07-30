@@ -13,7 +13,8 @@ use specs::arch::{
 };
 use specs::common::TaskId;
 use specs::kernel::{
-    CoreTcb, CriticalSection, KernelError, Result, SchedulerPolicy, TaskPriority, TaskState,
+    CoreTcb, CriticalSection, KernelError, Result, SchedulerPolicy, SystemTimer, TaskPriority,
+    TaskState, TickAction,
 };
 pub use stack_resources::KernelStackResources;
 
@@ -79,17 +80,30 @@ fn map_stack_guard_err_to_kernel_err(err: StackGuardError) -> KernelError {
     }
 }
 
+/// DESCRIPTION
+/// map system timer errors to kernel errors
+fn map_timer_err_to_kernel_err<E: core::fmt::Debug>(_err: E) -> KernelError {
+    KernelError::TimerFault
+}
+
 // hardware-blind kernel
-pub struct Kernel<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
-where
+pub struct Kernel<
+    CtxSwitchType,
+    CriticalSectionType,
+    SchedulerType,
+    StackGuardImpl,
+    SystemTimerType,
+> where
     CtxSwitchType: ContextSwitch,
     CriticalSectionType: CriticalSection + Copy,
     SchedulerType: SchedulerPolicy,
     StackGuardImpl: StackGuard + Copy,
+    SystemTimerType: SystemTimer,
 {
     ctx_switch: CtxSwitchType,
     crit_section: CriticalSectionType,
     scheduler: SchedulerType,
+    system_timer: SystemTimerType,
     curr_task: Option<TaskId>,
     task_count: usize,
     stack_cursor: usize,                                   // kernel runtime state
@@ -97,13 +111,14 @@ where
     tcb_list: [Option<TaskControlBlock<CtxSwitchType::TaskContext>>; MAX_TASKS],
 }
 
-impl<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
-    Kernel<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
+impl<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl, SystemTimerType>
+    Kernel<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl, SystemTimerType>
 where
     CtxSwitchType: ContextSwitch,
     CriticalSectionType: CriticalSection + Copy,
     SchedulerType: SchedulerPolicy,
     StackGuardImpl: StackGuard + Copy,
+    SystemTimerType: SystemTimer,
 {
     /// DESCRIPTION
     /// create a new hardware-blind kernel instance
@@ -112,11 +127,13 @@ where
         crit_section: CriticalSectionType,
         scheduler: SchedulerType,
         stack_resources: KernelStackResources<StackGuardImpl>,
+        system_timer: SystemTimerType,
     ) -> Self {
         return Self {
             ctx_switch,
             crit_section,
             scheduler,
+            system_timer,
             curr_task: None,
             task_count: 0,
             stack_cursor: 0x0,
@@ -210,6 +227,27 @@ where
         }
 
         return Ok(()); // success
+    }
+
+    /// DESCRIPTION
+    /// handle a system timer tick interrupt.
+    pub fn on_tick_interrupt(&mut self) -> Result<()> {
+        let action = self
+            .system_timer
+            .on_tick_interrupt()
+            .map_err(map_timer_err_to_kernel_err)?;
+
+        if action == TickAction::RequestReschedule {
+            let switched = self.execute_in_critical_section(|kernel| kernel.reschedule())?;
+            if switched {
+                self.ctx_switch.trigger_pendsv_switch();
+            }
+        }
+
+        self.system_timer
+            .acknowledge_tick_interrupt()
+            .map_err(map_timer_err_to_kernel_err)?;
+        Ok(())
     }
 
     /// DESCRIPTION

@@ -9,6 +9,7 @@ pub enum KernelError {
     StackGuard,
     InvalidPriority,
     ReadyQueueFull,
+    TimerFault,
 }
 
 /// DESCRIPTION
@@ -23,6 +24,7 @@ impl Display for KernelError {
             KernelError::StackGuard => f.write_str("stack guard violation"),
             KernelError::InvalidPriority => f.write_str("invalid priority"),
             KernelError::ReadyQueueFull => f.write_str("ready queue full"),
+            KernelError::TimerFault => f.write_str("system timer fault"),
         }
     }
 }
