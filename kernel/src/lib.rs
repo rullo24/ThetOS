@@ -1,33 +1,21 @@
 #![no_std]
 
-pub mod tcb;
 pub mod scheduler;
 pub mod stack_resources;
+pub mod tcb;
 
 // local imports
 use crate::tcb::TaskControlBlock;
-pub use stack_resources::KernelStackResources;
 pub use scheduler::FppScheduler;
 use specs::arch::{
-    ContextSwitch,
-    ContextSwitchError,
-    StackGuard,
-    StackGuardError,
-    StackGuardConfig,
-    StackGuardContext,
-    StackGuardMode,
-    StackGuardState,
+    ContextSwitch, ContextSwitchError, StackGuard, StackGuardConfig, StackGuardContext,
+    StackGuardError, StackGuardMode, StackGuardState,
 };
 use specs::common::TaskId;
 use specs::kernel::{
-    CriticalSection, 
-    SchedulerPolicy, 
-    KernelError, 
-    Result, 
-    TaskPriority,
-    TaskState,
-    CoreTcb,
+    CoreTcb, CriticalSection, KernelError, Result, SchedulerPolicy, TaskPriority, TaskState,
 };
+pub use stack_resources::KernelStackResources;
 
 // constants
 const MAX_TASKS: usize = 32;
@@ -51,7 +39,6 @@ fn build_default_stack_guard_ctx(
     stack_top: *mut u8,
     stack_limit: *mut u8,
 ) -> Result<StackGuardContext> {
-    
     // check that stack ptrs make sense
     if (stack_top as usize) <= (stack_limit as usize) {
         return Err(KernelError::InvalidConfig);
@@ -60,7 +47,9 @@ fn build_default_stack_guard_ctx(
     Ok(StackGuardContext {
         stack_top,
         stack_limit,
-        state: StackGuardState { low_mark: stack_limit },
+        state: StackGuardState {
+            low_mark: stack_limit,
+        },
         config: StackGuardConfig {
             mode: StackGuardMode::Canary,
             canary_word: DEFAULT_STACK_CANARY_WORD,
@@ -103,13 +92,13 @@ where
     scheduler: SchedulerType,
     curr_task: Option<TaskId>,
     task_count: usize,
-    stack_cursor: usize, // kernel runtime state
+    stack_cursor: usize,                                   // kernel runtime state
     stack_resources: KernelStackResources<StackGuardImpl>, // BSP supplied stack resources
     tcb_list: [Option<TaskControlBlock<CtxSwitchType::TaskContext>>; MAX_TASKS],
 }
 
-impl<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl> 
-Kernel<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
+impl<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
+    Kernel<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
 where
     CtxSwitchType: ContextSwitch,
     CriticalSectionType: CriticalSection,
@@ -119,8 +108,8 @@ where
     /// DESCRIPTION
     /// create a new hardware-blind kernel instance
     pub fn new(
-        ctx_switch: CtxSwitchType, 
-        crit_section: CriticalSectionType, 
+        ctx_switch: CtxSwitchType,
+        crit_section: CriticalSectionType,
         scheduler: SchedulerType,
         stack_resources: KernelStackResources<StackGuardImpl>,
     ) -> Self {
@@ -130,7 +119,7 @@ where
             scheduler,
             curr_task: None,
             task_count: 0,
-            stack_cursor: 0x0, 
+            stack_cursor: 0x0,
             stack_resources,
             tcb_list: core::array::from_fn(|_| None), // initialise all TCBs to None
         };
@@ -146,13 +135,12 @@ where
         entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
     ) -> Result<()> {
-
         // use stack_resources for the pool -> checking available slots for new task
         let idx: usize = task_id.0 as usize;
         if idx >= self.stack_resources.stack_guard_slots.len() {
             return Err(KernelError::InvalidConfig);
         }
-        
+
         // read arch-specific stack alignment -> reject if zero (invalid)
         let align = CtxSwitchType::STACK_ALIGNMENT_BYTES;
         if align == 0 {
@@ -175,9 +163,13 @@ where
         }
 
         // capture limit + top from stack pool and advance cursor for next spawn
-        let stack_limit = self.stack_resources.stack_pool.as_mut_ptr().wrapping_add(cursor_aligned);
+        let stack_limit = self
+            .stack_resources
+            .stack_pool
+            .as_mut_ptr()
+            .wrapping_add(cursor_aligned);
         let stack_top = stack_limit.wrapping_add(aligned_size);
-        
+
         // initialise task context for the new task
         let task_context = self
             .ctx_switch
@@ -188,7 +180,7 @@ where
 
         // build the stack guard context
         let mut stack_guard_ctx = build_default_stack_guard_ctx(stack_top, stack_limit)?;
-        self.stack_resources 
+        self.stack_resources
             .stack_guard // use BSP supplied stack guard impl
             .initialise(&mut stack_guard_ctx)
             .map_err(map_stack_guard_err_to_kernel_err)?; // throw error upwards if fails
@@ -206,11 +198,11 @@ where
             stack_guard_ctx,
             task_priority: priority,
         });
-        
+
         // advance cursor for next spawn
         self.stack_cursor = cursor_aligned + aligned_size;
         self.scheduler.register_task(task_id, priority)?;
-        self.task_count += 1; 
+        self.task_count += 1;
 
         // checking if no task is currently running
         if self.curr_task.is_none() {
@@ -220,10 +212,9 @@ where
         return Ok(()); // success
     }
 
-
     /// DESCRIPTION
-    /// trigger a voluntary context switch
-    pub fn yield_now(&mut self) -> Result<()> {
+    /// requeue the current task (if any) as ready, select the next runnable task, and update kernel state
+    fn reschedule(&mut self) -> Result<bool> {
         if let Some(tid) = self.curr_task {
             let i = tid.0 as usize;
             if let Some(ctx) = self
@@ -239,11 +230,13 @@ where
         }
 
         // current running task -> ready + requeue
-        if let Some(current_task_id) = self.curr_task {
+        let previous_task = self.curr_task;
+        if let Some(current_task_id) = previous_task {
             self.set_task_state(current_task_id, TaskState::Ready)?;
             let idx = current_task_id.0 as usize;
             if let Some(tcb) = self.tcb_list[idx].as_ref() {
-                self.scheduler.enqueue_runnable(current_task_id, tcb.get_priority())?;
+                self.scheduler
+                    .enqueue_runnable(current_task_id, tcb.get_priority())?;
             }
         }
 
@@ -253,7 +246,15 @@ where
             self.curr_task = Some(next_task_id);
         }
 
-        // trigger context switch to change task
+        Ok(self.curr_task != previous_task)
+    }
+
+    /// DESCRIPTION
+    /// trigger a voluntary context switch
+    pub fn yield_now(&mut self) -> Result<()> {
+        self.reschedule()?;
+
+        // trigger context switch
         self.ctx_switch.trigger_pendsv_switch();
         Ok(()) // success
     }
@@ -272,8 +273,9 @@ where
 
     /// DESCRIPTION
     /// execute an operation inside a critical section.
-    pub fn execute_in_critical_section<Res, Op>(&self, operation: Op) -> Res 
-    where Op: FnOnce() -> Res, // called at least once before return
+    pub fn execute_in_critical_section<Res, Op>(&self, operation: Op) -> Res
+    where
+        Op: FnOnce() -> Res, // called at least once before return
     {
         return self.crit_section.with_execute(operation);
     }
@@ -282,9 +284,10 @@ where
     /// update task state
     fn set_task_state(&mut self, task_id: TaskId, state: TaskState) -> Result<()> {
         let idx = task_id.0 as usize;
-        let tcb = self.tcb_list[idx].as_mut().ok_or(KernelError::InvalidState)?; // capture TCB or error if invalid
+        let tcb = self.tcb_list[idx]
+            .as_mut()
+            .ok_or(KernelError::InvalidState)?; // capture TCB or error if invalid
         tcb.set_state(state); // update task state
         Ok(())
     }
-
 }
