@@ -6,7 +6,7 @@ use core::ptr::addr_of_mut;
 use crate::limits::MAX_TASKS;
 use crate::system_timer::NucleoSystemTimer;
 use cortex_m::{V7mContextSwitch, CortexMCriticalSection, CortexMStackGuard};
-use cortex_m::v7m::set_tick_callback;
+use cortex_m::v7m::{configure_kernel_interrupt_priorities, set_tick_callback};
 use kernel::{Kernel, KernelStackResources};
 use kernel::scheduler::FppScheduler;
 use specs::common::TaskId;
@@ -45,6 +45,13 @@ impl System {
     /// DESCRIPTION
     /// create a board-composed system instance (`stack_pool` is SRAM reserved for kernel task stacks)
     pub fn new_with_pool(stack_pool: &'static mut [u8]) -> Self {
+        // PendSV and SysTick must be configured at the same lowest priority
+        // (standard Cortex-M RTOS convention) before the timer is started,
+        // so no tick can fire under an unconfigured priority.
+        unsafe {
+            configure_kernel_interrupt_priorities();
+        }
+
         let mut system_timer = NucleoSystemTimer::new();
         system_timer
             .initialise(SYSTICK_RELOAD_TICKS_TODO)
