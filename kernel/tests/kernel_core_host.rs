@@ -9,10 +9,9 @@ mod support;
 
 use support::{
     dummy_entry, test_resources, MockContextSwitch, MockCriticalSection, MockScheduler,
-    CTX_SWITCH_TRIGGER_COUNT, POOL_CRIT, POOL_KERNEL_INIT, POOL_QUEUE_FULL, POOL_SPAWN_OK,
-    POOL_SPAWN_REJECT, POOL_TICK_ACK_ON_ERROR, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS,
-    POOL_TICK_SINGLE_TASK, POOL_TICK_SWITCH, POOL_YIELD, POOL_YIELD_SAME_PRIORITY,
-    TICK_ACK_COUNT,
+    POOL_CRIT, POOL_KERNEL_INIT, POOL_QUEUE_FULL, POOL_SPAWN_OK, POOL_SPAWN_REJECT,
+    POOL_TICK_ACK_ON_ERROR, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS, POOL_TICK_SINGLE_TASK,
+    POOL_TICK_SWITCH, POOL_YIELD, POOL_YIELD_SAME_PRIORITY,
 };
 
 use crate::support::MockSystemTimer;
@@ -20,14 +19,14 @@ use crate::support::MockSystemTimer;
 #[test]
 fn kernel_init_with_mocks() {
     let pool = unsafe { &mut *addr_of_mut!(POOL_KERNEL_INIT) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
     let kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::None,
-        },
+        mock_timer,
     );
 
     assert_eq!(kernel.get_task_count(), 0);
@@ -36,17 +35,15 @@ fn kernel_init_with_mocks() {
 
 #[test]
 fn spawn_task_registers_first_task() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_OK) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::None,
-        },
+        mock_timer,
     );
 
     let result = kernel.spawn_task(
@@ -64,17 +61,15 @@ fn spawn_task_registers_first_task() {
 
 #[test]
 fn spawn_task_rejects_null_stack_top() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_REJECT) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::None,
-        },
+        mock_timer,
     );
 
     let result = kernel.spawn_task(
@@ -92,17 +87,15 @@ fn spawn_task_rejects_null_stack_top() {
 
 #[test]
 fn execute_in_critical_section_runs_operation() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_CRIT) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::None,
-        },
+        mock_timer,
     );
 
     let value: usize = kernel.execute_in_critical_section(|_kernel| 42);
@@ -111,93 +104,96 @@ fn execute_in_critical_section_runs_operation() {
 
 #[test]
 fn yield_now_triggers_ctx_switch() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_YIELD) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::None,
-        },
+        mock_timer,
     );
 
     kernel.yield_now().unwrap();
-    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
 }
 
 #[test]
 fn on_tick_interrupt_triggers_switch_when_task_changes() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_TICK_SWITCH) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::RequestReschedule);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         FppScheduler::new(),
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::RequestReschedule,
-        },
+        mock_timer,
     );
 
+    // same priority -> spawning TaskId(2) does not preempt TaskId(1) (see
+    // spawn_task's should_preempt_current check); the tick-driven reschedule
+    // is what advances to the next task here, isolating tick behaviour from
+    // spawn-time preemption.
+    let priority = TaskPriority::new(10).unwrap();
     kernel
-        .spawn_task(TaskId(1), TaskPriority::new(20).unwrap(), 1024, dummy_entry, null_mut())
+        .spawn_task(TaskId(1), priority, 1024, dummy_entry, null_mut())
         .unwrap();
     kernel
-        .spawn_task(TaskId(2), TaskPriority::new(5).unwrap(), 1024, dummy_entry, null_mut())
+        .spawn_task(TaskId(2), priority, 1024, dummy_entry, null_mut())
         .unwrap();
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 
     kernel.on_tick_interrupt().unwrap();
 
-    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
     assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
 }
 
 #[test]
 fn on_tick_interrupt_does_not_trigger_switch_when_no_action_requested() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_TICK_NO_ACTION) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         FppScheduler::new(),
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::None,
-        },
+        mock_timer,
     );
 
+    // same priority -> spawning TaskId(2) does not preempt TaskId(1),
+    // isolating this test's "TickAction::None means no switch" claim from
+    // spawn-time preemption.
+    let priority = TaskPriority::new(10).unwrap();
     kernel
-        .spawn_task(TaskId(1), TaskPriority::new(10).unwrap(), 1024, dummy_entry, null_mut())
+        .spawn_task(TaskId(1), priority, 1024, dummy_entry, null_mut())
         .unwrap();
     kernel
-        .spawn_task(TaskId(2), TaskPriority::new(5).unwrap(), 1024, dummy_entry, null_mut())
+        .spawn_task(TaskId(2), priority, 1024, dummy_entry, null_mut())
         .unwrap();
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 
     kernel.on_tick_interrupt().unwrap();
 
-    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 0);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
 }
 
 #[test]
 fn on_tick_interrupt_does_not_trigger_switch_when_only_task_reselects_itself() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_TICK_SINGLE_TASK) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::RequestReschedule);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         FppScheduler::new(),
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::RequestReschedule,
-        },
+        mock_timer,
     );
 
     kernel
@@ -206,45 +202,41 @@ fn on_tick_interrupt_does_not_trigger_switch_when_only_task_reselects_itself() {
 
     kernel.on_tick_interrupt().unwrap();
 
-    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 0);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
 }
 
 #[test]
 fn on_tick_interrupt_with_no_tasks_is_a_safe_no_op() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_TICK_NO_TASKS) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::RequestReschedule);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         FppScheduler::new(),
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::RequestReschedule,
-        },
+        mock_timer,
     );
 
     let result = kernel.on_tick_interrupt();
 
     assert!(result.is_ok());
-    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 0);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
     assert_eq!(kernel.get_current_task(), None);
 }
 
 #[test]
 fn spawn_task_propagates_ready_queue_full_error() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_QUEUE_FULL) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         FppScheduler::new(),
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::None,
-        },
+        mock_timer,
     );
 
     let same_priority = TaskPriority::new(15).unwrap();
@@ -281,17 +273,15 @@ fn yield_now_same_priority_advances_to_next_task() {
     // so it isn't double-booked as both running and ready -> the first
     // yield_now() at the same priority correctly advances to the next task
     // instead of reselecting the one that just spawned.
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_YIELD_SAME_PRIORITY) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         FppScheduler::new(),
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::None,
-        },
+        mock_timer,
     );
 
     let priority = TaskPriority::new(12).unwrap();
@@ -305,29 +295,26 @@ fn yield_now_same_priority_advances_to_next_task() {
 
     // first yield: advances straight to TaskId(2), no wasted self-reselect.
     kernel.yield_now().unwrap();
-    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
     assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
 
     // second yield: cycles back to TaskId(1).
     kernel.yield_now().unwrap();
-    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 2);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 2);
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
 }
 
 #[test]
 fn on_tick_interrupt_acknowledges_tick_even_when_reschedule_errors() {
-    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
-    TICK_ACK_COUNT.store(0, Ordering::SeqCst);
-
     let pool = unsafe { &mut *addr_of_mut!(POOL_TICK_ACK_ON_ERROR) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let (mock_timer, ack_count) = MockSystemTimer::new(TickAction::RequestReschedule);
     let mut kernel = Kernel::new(
-        MockContextSwitch,
+        mock_ctx_switch,
         MockCriticalSection,
         FppScheduler::new(),
         test_resources(pool),
-        MockSystemTimer {
-            next_action: TickAction::RequestReschedule,
-        },
+        mock_timer,
     );
 
     let priority = TaskPriority::new(9).unwrap();
@@ -350,7 +337,7 @@ fn on_tick_interrupt_acknowledges_tick_even_when_reschedule_errors() {
 
     assert_eq!(result, Err(KernelError::ReadyQueueFull));
     // acknowledge must still have run, despite reschedule() failing.
-    assert_eq!(TICK_ACK_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(ack_count.load(Ordering::SeqCst), 1);
     // no switch should have been triggered since reschedule aborted.
-    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 0);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 }

@@ -2,6 +2,7 @@ use core::ops::FnOnce;
 use core::ptr::addr_of_mut;
 use core::result::Result;
 use core::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 use kernel::KernelStackResources;
 use specs::arch::{
     ContextSwitch, ContextSwitchError, StackGuard, StackGuardContext, StackGuardError,
@@ -12,8 +13,6 @@ use specs::kernel::{
     CriticalSection, KernelError, SchedulerPolicy, SystemTimer, TaskPriority, TickAction,
 };
 
-pub static CTX_SWITCH_TRIGGER_COUNT: AtomicU32 = AtomicU32::new(0);
-pub static TICK_ACK_COUNT: AtomicU32 = AtomicU32::new(0);
 pub static mut POOL_KERNEL_INIT: [u8; 1024] = [0; 1024];
 pub static mut POOL_SPAWN_OK: [u8; 1024] = [0; 1024];
 pub static mut POOL_SPAWN_REJECT: [u8; 1024] = [0; 1024];
@@ -62,8 +61,20 @@ impl StackGuard for MockStackGuard {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct MockContextSwitch;
+#[derive(Clone)]
+pub struct MockContextSwitch {
+    pub trigger_count: Arc<AtomicU32>,
+}
+
+impl MockContextSwitch {
+    /// DESCRIPTION
+    /// create a mock w/ its own private trigger counter -> avoids sharing
+    /// mutable state across tests running in parallel (cargo test's default).
+    pub fn new() -> (Self, Arc<AtomicU32>) {
+        let trigger_count = Arc::new(AtomicU32::new(0));
+        (Self { trigger_count: trigger_count.clone() }, trigger_count)
+    }
+}
 
 impl ContextSwitch for MockContextSwitch {
     const STACK_ALIGNMENT_BYTES: usize = 8;
@@ -80,7 +91,7 @@ impl ContextSwitch for MockContextSwitch {
     }
 
     fn trigger_pendsv_switch(&self) {
-        CTX_SWITCH_TRIGGER_COUNT.fetch_add(1, Ordering::SeqCst);
+        self.trigger_count.fetch_add(1, Ordering::SeqCst);
     }
 }
 
@@ -142,6 +153,20 @@ pub fn test_resources(pool: &'static mut [u8]) -> KernelStackResources<MockStack
 
 pub struct MockSystemTimer {
     pub next_action: TickAction,
+    pub ack_count: Arc<AtomicU32>,
+}
+
+impl MockSystemTimer {
+    /// DESCRIPTION
+    /// create a mock w/ its own private ack counter -> avoids sharing
+    /// mutable state across tests running in parallel (cargo test's default).
+    pub fn new(next_action: TickAction) -> (Self, Arc<AtomicU32>) {
+        let ack_count = Arc::new(AtomicU32::new(0));
+        (
+            Self { next_action, ack_count: ack_count.clone() },
+            ack_count,
+        )
+    }
 }
 
 impl SystemTimer for MockSystemTimer {
@@ -160,7 +185,7 @@ impl SystemTimer for MockSystemTimer {
     }
 
     fn acknowledge_tick_interrupt(&mut self) -> Result<(), Self::Error> {
-        TICK_ACK_COUNT.fetch_add(1, Ordering::SeqCst);
+        self.ack_count.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
 

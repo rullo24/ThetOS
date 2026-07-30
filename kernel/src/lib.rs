@@ -204,10 +204,27 @@ where
         self.stack_resources.stack_guard_slots[idx] = Some(stack_guard_ctx); // store the stack guard context for the new task
 
         // a task spawned while nothing else is running becomes curr_task
-        // directly -> it must not also sit in the ready queue, or it ends up
-        // simultaneously "running" and "ready" and gets reselected on its
-        // own first yield/reschedule instead of letting other tasks run.
-        let becomes_current = self.curr_task.is_none();
+        // directly; a task spawned while something IS running preempts it
+        // only if the scheduler policy says so (should_preempt_current) ->
+        // this compares only the new candidate against the current task, so
+        // unrelated tasks already sitting in the ready queues are never
+        // disturbed by an unrelated spawn.
+        let previous_task = self.curr_task; // capture before any mutation below
+        let preempt_current = match previous_task {
+            None => true,
+            Some(current_task_id) => {
+                let current_priority = self.tcb_list[current_task_id.0 as usize]
+                    .as_ref()
+                    .map(|tcb| tcb.get_priority());
+                match current_priority {
+                    Some(curr_priority) => self.scheduler.should_preempt_current(
+                        Some((current_task_id, curr_priority)),
+                        (task_id, priority),
+                    ),
+                    None => false, // no valid current TCB -> nothing to preempt
+                }
+            }
+        };
 
         // TCB creation
         self.tcb_list[idx] = Some(TaskControlBlock {
@@ -216,7 +233,7 @@ where
                 bottom: stack_limit,
                 top: stack_top,
             },
-            task_state: if becomes_current { TaskState::Running } else { TaskState::Ready },
+            task_state: if preempt_current { TaskState::Running } else { TaskState::Ready },
             task_context, // capture from initialise_task_context
             stack_guard_ctx,
             task_priority: priority,
@@ -225,12 +242,28 @@ where
         // advance cursor for next spawn
         self.stack_cursor = cursor_aligned + aligned_size;
 
-        if becomes_current {
-            self.curr_task = Some(task_id); // setting the new task as the current task
+        if preempt_current {
+            // demote the previously running task (if any) back to Ready and
+            // requeue it -> only this specific task is touched, not a full
+            // reschedule() pass over the ready queues.
+            if let Some(previous_task_id) = previous_task {
+                self.set_task_state(previous_task_id, TaskState::Ready)?;
+                if let Some(tcb) = self.tcb_list[previous_task_id.0 as usize].as_ref() {
+                    self.scheduler.enqueue_runnable(previous_task_id, tcb.get_priority())?;
+                }
+            }
+            self.curr_task = Some(task_id); // new task preempts and becomes current
         } else {
             self.scheduler.register_task(task_id, priority)?;
         }
         self.task_count += 1;
+
+        // a genuine preemption (something was already running and got
+        // displaced) must trigger the real context switch; the very first
+        // spawn has nothing to switch from, so it does not.
+        if preempt_current && previous_task.is_some() {
+            self.ctx_switch.trigger_pendsv_switch();
+        }
 
         return Ok(()); // success
     }
