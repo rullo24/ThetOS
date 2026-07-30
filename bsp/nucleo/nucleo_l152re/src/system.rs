@@ -8,7 +8,7 @@ use cortex_m::{V7mContextSwitch, CortexMCriticalSection, CortexMStackGuard};
 use kernel::{Kernel, KernelStackResources};
 use kernel::scheduler::FppScheduler;
 use specs::common::TaskId;
-use specs::kernel::{Result, TaskPriority};
+use specs::kernel::{Result, TaskPriority, SystemTimer, TickAction};
 use specs::arch::StackGuardContext;
 
 /// global var to hold stack guard slots for static slot tables
@@ -16,7 +16,7 @@ static mut TASK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; MAX_TASKS] = [Non
 
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
-    kernel: Kernel<V7mContextSwitch, CortexMCriticalSection, FppScheduler, CortexMStackGuard>,
+    kernel: Kernel<V7mContextSwitch, CortexMCriticalSection, FppScheduler, CortexMStackGuard, NullSystemTimer>,
 }
 
 impl System {
@@ -30,10 +30,11 @@ impl System {
                 CortexMCriticalSection,
                 FppScheduler::new(),
                 KernelStackResources::new(
-                    stack_pool, 
+                    stack_pool,
                     CortexMStackGuard,
                     unsafe { &mut *addr_of_mut!(TASK_STACK_GUARD_SLOTS) },
                 ),
+                NullSystemTimer,
             ),
         }
     }
@@ -73,5 +74,36 @@ impl System {
 
         // TODO: "hand over control to scheduler/context-switch start path
 
+    }
+}
+
+/// DESCRIPTION
+/// placeholder SystemTimer: always reports no tick action. keeps System
+/// buildable ahead of the real SysTick-backed SystemTimer implementation
+/// (Phase 3 bsp/mcu tickets); replace with the real impl once landed.
+#[derive(Clone, Copy)]
+pub struct NullSystemTimer;
+
+impl SystemTimer for NullSystemTimer {
+    type Error = core::convert::Infallible;
+
+    fn initialise(&mut self, _reload_ticks: u32) -> core::result::Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn start(&mut self) -> core::result::Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn stop(&mut self) -> core::result::Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn acknowledge_tick_interrupt(&mut self) -> core::result::Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn on_tick_interrupt(&mut self) -> core::result::Result<TickAction, Self::Error> {
+        Ok(TickAction::None)
     }
 }

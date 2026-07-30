@@ -1,6 +1,7 @@
 use crate::common::{irsq_available_snapshot_and_disable, set_irqs_primask};
 use specs::kernel::CriticalSection;
 
+#[derive(Clone, Copy)]
 pub struct CortexMCriticalSection;
 
 impl CriticalSection for CortexMCriticalSection {
