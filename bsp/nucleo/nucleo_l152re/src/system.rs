@@ -13,16 +13,19 @@ use specs::common::TaskId;
 use specs::kernel::{Result, TaskPriority, SystemTimer};
 use specs::arch::StackGuardContext;
 
-/// TODO(#33): placeholder reload value (max 24-bit -> slowest safe tick
-/// rate) until real SysCLK-derived values are available; replace once known.
-const SYSTICK_RELOAD_TICKS_TODO: u32 = 0x00FF_FFFF;
+// RM0038 rev 18 s6.2.3 "MSI clock" pg 132: SYSCLK default post-reset = MSI @ 2,097,152 Hz
+const SYSCLK_HZ: u32 = 2_097_152;
+
+// standard 1kHz system tick; future delay_ms() counts ticks for visible timing
+const SYSTICK_PERIOD_MS: u32 = 1;
+
+// reload = SYSCLK_HZ*period_ms/1000 - 1 (ARM N-1 formula); ~999.928us actual, negligible vs MSI's ~1% tolerance
+const SYSTICK_RELOAD_TICKS: u32 = (SYSCLK_HZ * SYSTICK_PERIOD_MS) / 1000 - 1;
 
 /// global var to hold stack guard slots for static slot tables
 static mut TASK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; MAX_TASKS] = [None; MAX_TASKS];
 
-/// single running System instance -> reachable from the SysTick tick
-/// callback, which is a bare fn() and cannot capture state. populated once
-/// by install_as_tick_source().
+/// single running System instance -> reachable from the tick callback, populated by install_as_tick_source()
 static mut SYSTEM: Option<System> = None;
 
 /// DESCRIPTION
@@ -45,16 +48,14 @@ impl System {
     /// DESCRIPTION
     /// create a board-composed system instance (`stack_pool` is SRAM reserved for kernel task stacks)
     pub fn new_with_pool(stack_pool: &'static mut [u8]) -> Self {
-        // PendSV and SysTick must be configured at the same lowest priority
-        // (standard Cortex-M RTOS convention) before the timer is started,
-        // so no tick can fire under an unconfigured priority.
+        // PendSV/SysTick set to same lowest priority before the timer starts (standard Cortex-M RTOS convention)
         unsafe {
             configure_kernel_interrupt_priorities();
         }
 
         let mut system_timer = NucleoSystemTimer::new();
         system_timer
-            .initialise(SYSTICK_RELOAD_TICKS_TODO)
+            .initialise(SYSTICK_RELOAD_TICKS)
             .expect("SysTick initialise failed");
         system_timer.start().expect("SysTick start failed");
 
