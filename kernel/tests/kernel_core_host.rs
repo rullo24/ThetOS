@@ -9,8 +9,9 @@ mod support;
 
 use support::{
     dummy_entry, test_resources, MockContextSwitch, MockCriticalSection, MockScheduler,
-    CTX_SWITCH_TRIGGER_COUNT, POOL_CRIT, POOL_KERNEL_INIT, POOL_SPAWN_OK, POOL_SPAWN_REJECT,
-    POOL_TICK_NO_ACTION, POOL_TICK_SINGLE_TASK, POOL_TICK_SWITCH, POOL_YIELD,
+    CTX_SWITCH_TRIGGER_COUNT, POOL_CRIT, POOL_KERNEL_INIT, POOL_QUEUE_FULL, POOL_SPAWN_OK,
+    POOL_SPAWN_REJECT, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS, POOL_TICK_SINGLE_TASK,
+    POOL_TICK_SWITCH, POOL_YIELD, POOL_YIELD_SAME_PRIORITY,
 };
 
 use crate::support::MockSystemTimer;
@@ -206,4 +207,108 @@ fn on_tick_interrupt_does_not_trigger_switch_when_only_task_reselects_itself() {
 
     assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 0);
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
+}
+
+#[test]
+fn on_tick_interrupt_with_no_tasks_is_a_safe_no_op() {
+    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
+
+    let pool = unsafe { &mut *addr_of_mut!(POOL_TICK_NO_TASKS) };
+    let mut kernel = Kernel::new(
+        MockContextSwitch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        MockSystemTimer {
+            next_action: TickAction::RequestReschedule,
+        },
+    );
+
+    let result = kernel.on_tick_interrupt();
+
+    assert!(result.is_ok());
+    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 0);
+    assert_eq!(kernel.get_current_task(), None);
+}
+
+#[test]
+fn spawn_task_propagates_ready_queue_full_error() {
+    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
+
+    let pool = unsafe { &mut *addr_of_mut!(POOL_QUEUE_FULL) };
+    let mut kernel = Kernel::new(
+        MockContextSwitch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        MockSystemTimer {
+            next_action: TickAction::None,
+        },
+    );
+
+    let same_priority = TaskPriority::new(15).unwrap();
+
+    // READY_QUEUE_CAPACITY is 8 per priority level -> the 9th same-priority
+    // spawn must be rejected by the scheduler and propagated as an error.
+    for i in 0..8u32 {
+        let result = kernel.spawn_task(
+            TaskId(i),
+            same_priority,
+            1024,
+            dummy_entry,
+            null_mut(),
+        );
+        assert!(result.is_ok(), "spawn {i} unexpectedly failed: {result:?}");
+    }
+
+    let result = kernel.spawn_task(
+        TaskId(8),
+        same_priority,
+        1024,
+        dummy_entry,
+        null_mut(),
+    );
+
+    assert_eq!(result, Err(KernelError::ReadyQueueFull));
+}
+
+#[test]
+fn yield_now_same_priority_first_yield_reselects_spawning_task() {
+    // documents current (buggy) behaviour: spawn_task marks the first spawned
+    // task as curr_task while ALSO leaving it enqueued in the ready queue, so
+    // the first yield_now() at the same priority reselects it instead of
+    // advancing to the next task. the second yield_now() then reaches the
+    // next task as expected. see conversation notes on kernel/src/lib.rs
+    // spawn_task for the underlying double-enqueue defect.
+    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
+
+    let pool = unsafe { &mut *addr_of_mut!(POOL_YIELD_SAME_PRIORITY) };
+    let mut kernel = Kernel::new(
+        MockContextSwitch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        MockSystemTimer {
+            next_action: TickAction::None,
+        },
+    );
+
+    let priority = TaskPriority::new(12).unwrap();
+    kernel
+        .spawn_task(TaskId(1), priority, 1024, dummy_entry, null_mut())
+        .unwrap();
+    kernel
+        .spawn_task(TaskId(2), priority, 1024, dummy_entry, null_mut())
+        .unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
+
+    // first yield: still triggers a switch signal, but reselects TaskId(1).
+    kernel.yield_now().unwrap();
+    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 1);
+    assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
+
+    // second yield: now actually advances to TaskId(2).
+    kernel.yield_now().unwrap();
+    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 2);
+    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
 }
