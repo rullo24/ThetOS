@@ -1,0 +1,17 @@
+[package]
+name = "systick_tick_probe"
+version = "0.1.0"
+edition = "2021"
+build = "../../../.cargo/build.rs"
+
+[[bin]]
+name = "systick_tick_probe"
+
+[dependencies]
+entry = { path = "../../../macros/entry" }
+nucleo_l152re = { path = "../../../bsp/nucleo/nucleo_l152re" }
+cortex_m = { path = "../../../arch/cortex-m" }
+specs = { path = "../../../specs" }
+
+[build-dependencies]
+toml = { workspace = true }

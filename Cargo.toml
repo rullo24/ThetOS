@@ -24,6 +24,7 @@ members = [
     "phase_testing/phase2/primitive_switch",
     "phase_testing/phase2/psp_to_psp",
     "phase_testing/phase2/p2_stack_guard",
+    "phase_testing/phase3/systick_tick_probe",
 ]
 
 [workspace.dependencies]
