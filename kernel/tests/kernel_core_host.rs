@@ -248,9 +248,11 @@ fn spawn_task_propagates_ready_queue_full_error() {
 
     let same_priority = TaskPriority::new(15).unwrap();
 
-    // READY_QUEUE_CAPACITY is 8 per priority level -> the 9th same-priority
-    // spawn must be rejected by the scheduler and propagated as an error.
-    for i in 0..8u32 {
+    // READY_QUEUE_CAPACITY is 8 per priority level. the first spawn becomes
+    // curr_task directly and is not enqueued (see spawn_task), so it takes
+    // 9 spawns to fill the queue (1 not enqueued + 8 enqueued) before the
+    // 10th same-priority spawn overflows it.
+    for i in 0..9u32 {
         let result = kernel.spawn_task(
             TaskId(i),
             same_priority,
@@ -262,7 +264,7 @@ fn spawn_task_propagates_ready_queue_full_error() {
     }
 
     let result = kernel.spawn_task(
-        TaskId(8),
+        TaskId(9),
         same_priority,
         1024,
         dummy_entry,
@@ -273,13 +275,11 @@ fn spawn_task_propagates_ready_queue_full_error() {
 }
 
 #[test]
-fn yield_now_same_priority_first_yield_reselects_spawning_task() {
-    // documents current (buggy) behaviour: spawn_task marks the first spawned
-    // task as curr_task while ALSO leaving it enqueued in the ready queue, so
-    // the first yield_now() at the same priority reselects it instead of
-    // advancing to the next task. the second yield_now() then reaches the
-    // next task as expected. see conversation notes on kernel/src/lib.rs
-    // spawn_task for the underlying double-enqueue defect.
+fn yield_now_same_priority_advances_to_next_task() {
+    // spawn_task no longer enqueues the task that becomes curr_task directly,
+    // so it isn't double-booked as both running and ready -> the first
+    // yield_now() at the same priority correctly advances to the next task
+    // instead of reselecting the one that just spawned.
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
     let pool = unsafe { &mut *addr_of_mut!(POOL_YIELD_SAME_PRIORITY) };
@@ -302,13 +302,13 @@ fn yield_now_same_priority_first_yield_reselects_spawning_task() {
         .unwrap();
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
 
-    // first yield: still triggers a switch signal, but reselects TaskId(1).
+    // first yield: advances straight to TaskId(2), no wasted self-reselect.
     kernel.yield_now().unwrap();
     assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 1);
-    assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
+    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
 
-    // second yield: now actually advances to TaskId(2).
+    // second yield: cycles back to TaskId(1).
     kernel.yield_now().unwrap();
     assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 2);
-    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
+    assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
 }
