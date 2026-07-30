@@ -1,11 +1,5 @@
 /// Reset path, vector table, and RAM init for STM32L152RE (Cortex-M3).
-
-use core::ptr::{
-    addr_of, 
-    addr_of_mut, 
-    read_volatile, 
-    write_volatile,
-};
+use core::ptr::{addr_of, addr_of_mut, read_volatile, write_volatile};
 
 // pulled from linker.ld
 const RAM_ORIGIN: u32 = 0x2000_0000;
@@ -13,7 +7,8 @@ const RAM_LENGTH_BYTES: u32 = 80 * 1024;
 const ESTACK: u32 = RAM_ORIGIN + RAM_LENGTH_BYTES;
 
 // defining linker symbols (match linker.ld)
-unsafe extern "C" { // importing symbols like this is not memory-layout specific (this is not a struct)
+unsafe extern "C" {
+    // importing symbols like this is not memory-layout specific (this is not a struct)
     static mut __sdata: u8;
     static mut __edata: u8;
     static __sidata: u8;
@@ -49,7 +44,8 @@ unsafe fn copy_data() {
     let mut dst: *mut u8 = addr_of_mut!(__sdata); // start of data section in RAM
     let dst_end: *mut u8 = addr_of_mut!(__edata); // end of data section in RAM
     let mut src: *const u8 = addr_of!(__sidata); // start of data section in FLASH
-    while (dst as usize) < (dst_end as usize) { // iterate over each RAM byte
+    while (dst as usize) < (dst_end as usize) {
+        // iterate over each RAM byte
         write_volatile(dst, read_volatile(src)); // write the byte from FLASH to RAM
         dst = dst.wrapping_add(1); // increment the RAM ptr
         src = src.wrapping_add(1); // increment the RAM ptr
@@ -60,7 +56,8 @@ unsafe fn copy_data() {
 unsafe fn zero_bss() {
     let mut p_bss_curr: *mut u8 = addr_of_mut!(__sbss); // start of bss section in RAM
     let end_bss: *mut u8 = addr_of_mut!(__ebss); // end of bss section in RAM
-    while (p_bss_curr as usize) < (end_bss as usize) { // iterate over each bss byte
+    while (p_bss_curr as usize) < (end_bss as usize) {
+        // iterate over each bss byte
         write_volatile(p_bss_curr, 0); // write 0x0 to current byte
         p_bss_curr = p_bss_curr.wrapping_add(1); // increment ptr
     }
@@ -88,7 +85,7 @@ core::arch::global_asm!(
     .word Default_Handler       // 0x030: DebugMon.
     .word Default_Handler       // 0x034: reserved.
     .word PendSV_Handler        // 0x038: PendSV.
-    .word Default_Handler       // 0x03C: SysTick.
+    .word SysTick_Handler       // 0x03C: SysTick.
     .word Default_Handler       // 0x040: IRQ0 WWDG.
     .word Default_Handler       // 0x044: IRQ1 PVD.
     .word Default_Handler       // 0x048: IRQ2 TAMPER_STAMP.

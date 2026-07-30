@@ -1,7 +1,8 @@
 use core::result::Result;
 
-/// low-level MCU timer capability contract (no board-facing behaviour).
-pub trait TimerHardware {
+/// DESCRIPTION
+/// low-level CPU-core timer contract (Cortex-M SysTick)
+pub trait SystemTicker {
     type Error: core::fmt::Debug;
 
     fn start(&mut self) -> Result<(), Self::Error>;

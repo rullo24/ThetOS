@@ -1,7 +1,7 @@
 // REFERENCE: arm developer -> Home / Documentation / IP Products / Processors / Cortex-M / Cortex-M3 / Cortex-M3 Devices Generic User Guide / System Control Block
 // https://developer.arm.com/documentation/dui0552/a/cortex-m3-peripherals/system-control-block?lang=en
 
-use core::ptr::{write_volatile, read_volatile};
+use core::ptr::{read_volatile, write_volatile};
 use core::sync::atomic::{compiler_fence, Ordering};
 
 /// ICSR (Interrupt Control and State Register) -> SCB base 0xE000_ED00 + 0x04.
