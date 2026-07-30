@@ -83,7 +83,7 @@ fn map_stack_guard_err_to_kernel_err(err: StackGuardError) -> KernelError {
 pub struct Kernel<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
 where
     CtxSwitchType: ContextSwitch,
-    CriticalSectionType: CriticalSection,
+    CriticalSectionType: CriticalSection + Copy,
     SchedulerType: SchedulerPolicy,
     StackGuardImpl: StackGuard + Copy,
 {
@@ -101,7 +101,7 @@ impl<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
     Kernel<CtxSwitchType, CriticalSectionType, SchedulerType, StackGuardImpl>
 where
     CtxSwitchType: ContextSwitch,
-    CriticalSectionType: CriticalSection,
+    CriticalSectionType: CriticalSection + Copy,
     SchedulerType: SchedulerPolicy,
     StackGuardImpl: StackGuard + Copy,
 {
@@ -273,11 +273,12 @@ where
 
     /// DESCRIPTION
     /// execute an operation inside a critical section.
-    pub fn execute_in_critical_section<Res, Op>(&self, operation: Op) -> Res
+    pub fn execute_in_critical_section<Res, Op>(&mut self, operation: Op) -> Res
     where
-        Op: FnOnce() -> Res, // called at least once before return
+        Op: FnOnce(&mut Self) -> Res, // called at least once before return
     {
-        return self.crit_section.with_execute(operation);
+        let crit = self.crit_section;
+        return crit.with_execute(|| operation(self));
     }
 
     /// DESCRIPTION

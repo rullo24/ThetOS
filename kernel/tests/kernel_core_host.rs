@@ -7,10 +7,9 @@ use specs::kernel::{KernelError, TaskPriority};
 mod support;
 
 use support::{
-    dummy_entry, test_resources, MockContextSwitch, 
-    MockCriticalSection, MockScheduler, CTX_SWITCH_TRIGGER_COUNT, 
-    POOL_CRIT, POOL_KERNEL_INIT, POOL_SPAWN_OK, 
-    POOL_SPAWN_REJECT, POOL_YIELD,
+    dummy_entry, test_resources, MockContextSwitch, MockCriticalSection, MockScheduler,
+    CTX_SWITCH_TRIGGER_COUNT, POOL_CRIT, POOL_KERNEL_INIT, POOL_SPAWN_OK, POOL_SPAWN_REJECT,
+    POOL_YIELD,
 };
 
 #[test]
@@ -82,14 +81,14 @@ fn execute_in_critical_section_runs_operation() {
     CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
 
     let pool = unsafe { &mut *addr_of_mut!(POOL_CRIT) };
-    let kernel = Kernel::new(
+    let mut kernel = Kernel::new(
         MockContextSwitch,
         MockCriticalSection,
         MockScheduler,
         test_resources(pool),
     );
 
-    let value: usize = kernel.execute_in_critical_section(|| 42);
+    let value: usize = kernel.execute_in_critical_section(|_kernel| 42);
     assert_eq!(value, 42);
 }
 
