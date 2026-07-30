@@ -9,7 +9,8 @@ mod support;
 
 use support::{
     dummy_entry, test_resources, MockContextSwitch, MockCriticalSection, MockScheduler,
-    POOL_CRIT, POOL_KERNEL_INIT, POOL_QUEUE_FULL, POOL_SPAWN_OK, POOL_SPAWN_REJECT,
+    POOL_CRIT, POOL_KERNEL_INIT, POOL_QUEUE_FULL, POOL_SPAWN_NO_PREEMPT, POOL_SPAWN_OK,
+    POOL_SPAWN_PREEMPT, POOL_SPAWN_PREEMPT_REQUEUE_FULL, POOL_SPAWN_REJECT,
     POOL_TICK_ACK_ON_ERROR, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS, POOL_TICK_SINGLE_TASK,
     POOL_TICK_SWITCH, POOL_YIELD, POOL_YIELD_SAME_PRIORITY,
 };
@@ -340,4 +341,119 @@ fn on_tick_interrupt_acknowledges_tick_even_when_reschedule_errors() {
     assert_eq!(ack_count.load(Ordering::SeqCst), 1);
     // no switch should have been triggered since reschedule aborted.
     assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn spawn_task_preempts_current_when_higher_priority() {
+    let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_PREEMPT) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        mock_timer,
+    );
+
+    // low-priority task spawns first and becomes curr_task.
+    kernel
+        .spawn_task(TaskId(1), TaskPriority::new(20).unwrap(), 1024, dummy_entry, null_mut())
+        .unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
+
+    // higher-priority task spawns second -> must preempt immediately, not
+    // wait for the next yield/tick.
+    kernel
+        .spawn_task(TaskId(2), TaskPriority::new(5).unwrap(), 1024, dummy_entry, null_mut())
+        .unwrap();
+
+    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+
+    // TaskId(2) remains the highest-priority ready task -> yielding does NOT
+    // hand control back to the lower-priority TaskId(1). strict FPP priority
+    // beats a cooperative yield; TaskId(1) only runs once TaskId(2) actually
+    // blocks or completes (no such API exists yet in this phase).
+    // yield_now() still unconditionally signals a switch even though the
+    // selected task didn't change (matches its existing tested semantics).
+    kernel.yield_now().unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn spawn_task_does_not_preempt_when_lower_priority() {
+    let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_NO_PREEMPT) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        mock_timer,
+    );
+
+    kernel
+        .spawn_task(TaskId(1), TaskPriority::new(5).unwrap(), 1024, dummy_entry, null_mut())
+        .unwrap();
+    kernel
+        .spawn_task(TaskId(2), TaskPriority::new(20).unwrap(), 1024, dummy_entry, null_mut())
+        .unwrap();
+
+    assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn spawn_task_preemption_actually_requeues_previous_task() {
+    // TaskId(0) and TaskId(2)'s two-task test can't distinguish "the
+    // preempted task was correctly requeued" from "it was silently
+    // dropped" -> both look identical when only one other task exists,
+    // since the higher-priority task wins regardless. Prove the requeue
+    // genuinely happens by filling the preempted task's own priority queue
+    // to capacity first, so the requeue call inside spawn_task's preemption
+    // path is forced to fail if (and only if) it actually runs.
+    let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_PREEMPT_REQUEUE_FULL) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        mock_timer,
+    );
+
+    let low_priority = TaskPriority::new(20).unwrap();
+
+    // TaskId(0) becomes curr_task directly (nothing running yet).
+    kernel
+        .spawn_task(TaskId(0), low_priority, 1024, dummy_entry, null_mut())
+        .unwrap();
+
+    // fill TaskId(0)'s own priority queue to capacity (8) with unrelated
+    // same-priority tasks -> none of these preempt TaskId(0) (same
+    // priority never preempts), they just enqueue normally.
+    for i in 1..=8u32 {
+        kernel
+            .spawn_task(TaskId(i), low_priority, 1024, dummy_entry, null_mut())
+            .unwrap();
+    }
+
+    // a higher-priority spawn now preempts TaskId(0) -> its requeue attempt
+    // hits the already-full queue and must fail. TaskId(9) is used (not a
+    // larger id) since the test harness's fixed-size slot arrays only
+    // support TaskId values below TEST_MAX_TASKS (32).
+    let result = kernel.spawn_task(
+        TaskId(9),
+        TaskPriority::new(5).unwrap(),
+        1024,
+        dummy_entry,
+        null_mut(),
+    );
+
+    assert_eq!(result, Err(KernelError::ReadyQueueFull));
 }
