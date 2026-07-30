@@ -5,6 +5,7 @@ use core::ptr::addr_of_mut;
 // local imports
 use crate::limits::MAX_TASKS;
 use cortex_m::{V7mContextSwitch, CortexMCriticalSection, CortexMStackGuard};
+use cortex_m::v7m::set_tick_callback;
 use kernel::{Kernel, KernelStackResources};
 use kernel::scheduler::FppScheduler;
 use specs::common::TaskId;
@@ -13,6 +14,21 @@ use specs::arch::StackGuardContext;
 
 /// global var to hold stack guard slots for static slot tables
 static mut TASK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; MAX_TASKS] = [None; MAX_TASKS];
+
+/// single running System instance -> reachable from the SysTick tick
+/// callback, which is a bare fn() and cannot capture state. populated once
+/// by install_as_tick_source().
+static mut SYSTEM: Option<System> = None;
+
+/// DESCRIPTION
+/// tick callback registered with arch -> forwards the tick into the running System's kernel
+fn on_systick_tick() {
+    unsafe {
+        if let Some(system) = (*addr_of_mut!(SYSTEM)).as_mut() {
+            let _ = system.kernel.on_tick_interrupt();
+        }
+    }
+}
 
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
@@ -36,6 +52,16 @@ impl System {
                 ),
                 NullSystemTimer,
             ),
+        }
+    }
+
+    /// DESCRIPTION
+    /// move this System into the global static and register it as the SysTick tick source; caller must ensure this is called at most once
+    pub unsafe fn install_as_tick_source(self) -> &'static mut System {
+        unsafe {
+            SYSTEM = Some(self);
+            set_tick_callback(on_systick_tick);
+            (*addr_of_mut!(SYSTEM)).as_mut().unwrap()
         }
     }
 
