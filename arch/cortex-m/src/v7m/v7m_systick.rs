@@ -22,6 +22,9 @@ const SYST_RVR_MASK: u32 = 0x00FF_FFFF; // 24-bit reload value (2^23=8,388,608) 
 // software-extended tick counter -> only the ISR touches this (no scheduler logic)
 static mut SYSTICK_TICK_COUNT: u64 = 0;
 
+// callback when SysTick occurs -> registed once by BSP on init
+static mut SYSTICK_CALLBACK: Option<fn()> = None;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SysTickError {
     ReloadOutOfRange,
@@ -108,7 +111,13 @@ impl SystemTicker for V7mSysTick {
 }
 
 /// DESCRIPTION
-/// minimal SysTick ISR -> increments the software tick count only, no scheduler logic
+/// register the function to call on every SysTick interrupt -> must be set before enable_interrupt()
+pub unsafe fn set_tick_callback(callback: fn()) {
+    write_volatile(core::ptr::addr_of_mut!(SYSTICK_CALLBACK), Some(callback));
+}
+
+/// DESCRIPTION
+/// minimal SysTick ISR -> increments the software tick count only, then invokes BSP-registered callback
 #[no_mangle]
 pub extern "C" fn SysTick_Handler() {
     unsafe {
@@ -117,5 +126,10 @@ pub extern "C" fn SysTick_Handler() {
             core::ptr::addr_of_mut!(SYSTICK_TICK_COUNT),
             count.wrapping_add(1),
         );
+
+        // invokes SysTick callback (if avail)
+        if let Some(callback) = read_volatile(core::ptr::addr_of!(SYSTICK_CALLBACK)) {
+            callback();
+        }
     }
 }
