@@ -4,13 +4,18 @@ use core::ptr::addr_of_mut;
 
 // local imports
 use crate::limits::MAX_TASKS;
+use crate::system_timer::NucleoSystemTimer;
 use cortex_m::{V7mContextSwitch, CortexMCriticalSection, CortexMStackGuard};
 use cortex_m::v7m::set_tick_callback;
 use kernel::{Kernel, KernelStackResources};
 use kernel::scheduler::FppScheduler;
 use specs::common::TaskId;
-use specs::kernel::{Result, TaskPriority, SystemTimer, TickAction};
+use specs::kernel::{Result, TaskPriority, SystemTimer};
 use specs::arch::StackGuardContext;
+
+/// TODO(#33): placeholder reload value (max 24-bit -> slowest safe tick
+/// rate) until real SysCLK-derived values are available; replace once known.
+const SYSTICK_RELOAD_TICKS_TODO: u32 = 0x00FF_FFFF;
 
 /// global var to hold stack guard slots for static slot tables
 static mut TASK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; MAX_TASKS] = [None; MAX_TASKS];
@@ -32,7 +37,7 @@ fn on_systick_tick() {
 
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
-    kernel: Kernel<V7mContextSwitch, CortexMCriticalSection, FppScheduler, CortexMStackGuard, NullSystemTimer>,
+    kernel: Kernel<V7mContextSwitch, CortexMCriticalSection, FppScheduler, CortexMStackGuard, NucleoSystemTimer>,
 }
 
 impl System {
@@ -40,6 +45,12 @@ impl System {
     /// DESCRIPTION
     /// create a board-composed system instance (`stack_pool` is SRAM reserved for kernel task stacks)
     pub fn new_with_pool(stack_pool: &'static mut [u8]) -> Self {
+        let mut system_timer = NucleoSystemTimer::new();
+        system_timer
+            .initialise(SYSTICK_RELOAD_TICKS_TODO)
+            .expect("SysTick initialise failed");
+        system_timer.start().expect("SysTick start failed");
+
         Self {
             kernel: Kernel::new(
                 V7mContextSwitch,
@@ -50,7 +61,7 @@ impl System {
                     CortexMStackGuard,
                     unsafe { &mut *addr_of_mut!(TASK_STACK_GUARD_SLOTS) },
                 ),
-                NullSystemTimer,
+                system_timer,
             ),
         }
     }
@@ -100,36 +111,5 @@ impl System {
 
         // TODO: "hand over control to scheduler/context-switch start path
 
-    }
-}
-
-/// DESCRIPTION
-/// placeholder SystemTimer: always reports no tick action. keeps System
-/// buildable ahead of the real SysTick-backed SystemTimer implementation
-/// (Phase 3 bsp/mcu tickets); replace with the real impl once landed.
-#[derive(Clone, Copy)]
-pub struct NullSystemTimer;
-
-impl SystemTimer for NullSystemTimer {
-    type Error = core::convert::Infallible;
-
-    fn initialise(&mut self, _reload_ticks: u32) -> core::result::Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn start(&mut self) -> core::result::Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn stop(&mut self) -> core::result::Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn acknowledge_tick_interrupt(&mut self) -> core::result::Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn on_tick_interrupt(&mut self) -> core::result::Result<TickAction, Self::Error> {
-        Ok(TickAction::None)
     }
 }
