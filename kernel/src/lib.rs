@@ -236,11 +236,18 @@ where
     }
 
     /// DESCRIPTION
-    /// handle a system timer tick interrupt.
+    /// handle a system timer tick interrupt. acknowledges the tick before
+    /// running any reschedule policy work, so the interrupt source is
+    /// cleared even if reschedule() itself errors -> an unacknowledged tick
+    /// could otherwise leave the IRQ asserted and re-enter the ISR on return.
     pub fn on_tick_interrupt(&mut self) -> Result<()> {
         let action = self
             .system_timer
             .on_tick_interrupt()
+            .map_err(map_timer_err_to_kernel_err)?;
+
+        self.system_timer
+            .acknowledge_tick_interrupt()
             .map_err(map_timer_err_to_kernel_err)?;
 
         if action == TickAction::RequestReschedule {
@@ -250,9 +257,6 @@ where
             }
         }
 
-        self.system_timer
-            .acknowledge_tick_interrupt()
-            .map_err(map_timer_err_to_kernel_err)?;
         Ok(())
     }
 

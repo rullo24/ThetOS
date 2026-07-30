@@ -10,8 +10,9 @@ mod support;
 use support::{
     dummy_entry, test_resources, MockContextSwitch, MockCriticalSection, MockScheduler,
     CTX_SWITCH_TRIGGER_COUNT, POOL_CRIT, POOL_KERNEL_INIT, POOL_QUEUE_FULL, POOL_SPAWN_OK,
-    POOL_SPAWN_REJECT, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS, POOL_TICK_SINGLE_TASK,
-    POOL_TICK_SWITCH, POOL_YIELD, POOL_YIELD_SAME_PRIORITY,
+    POOL_SPAWN_REJECT, POOL_TICK_ACK_ON_ERROR, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS,
+    POOL_TICK_SINGLE_TASK, POOL_TICK_SWITCH, POOL_YIELD, POOL_YIELD_SAME_PRIORITY,
+    TICK_ACK_COUNT,
 };
 
 use crate::support::MockSystemTimer;
@@ -311,4 +312,45 @@ fn yield_now_same_priority_advances_to_next_task() {
     kernel.yield_now().unwrap();
     assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 2);
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
+}
+
+#[test]
+fn on_tick_interrupt_acknowledges_tick_even_when_reschedule_errors() {
+    CTX_SWITCH_TRIGGER_COUNT.store(0, Ordering::SeqCst);
+    TICK_ACK_COUNT.store(0, Ordering::SeqCst);
+
+    let pool = unsafe { &mut *addr_of_mut!(POOL_TICK_ACK_ON_ERROR) };
+    let mut kernel = Kernel::new(
+        MockContextSwitch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        MockSystemTimer {
+            next_action: TickAction::RequestReschedule,
+        },
+    );
+
+    let priority = TaskPriority::new(9).unwrap();
+
+    // first spawn becomes curr_task directly and is not enqueued.
+    kernel
+        .spawn_task(TaskId(0), priority, 1024, dummy_entry, null_mut())
+        .unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(0)));
+
+    // fill this priority's ready queue to capacity (8) with other tasks, so
+    // reschedule()'s attempt to requeue the current task on tick fails.
+    for i in 1..=8u32 {
+        kernel
+            .spawn_task(TaskId(i), priority, 1024, dummy_entry, null_mut())
+            .unwrap();
+    }
+
+    let result = kernel.on_tick_interrupt();
+
+    assert_eq!(result, Err(KernelError::ReadyQueueFull));
+    // acknowledge must still have run, despite reschedule() failing.
+    assert_eq!(TICK_ACK_COUNT.load(Ordering::SeqCst), 1);
+    // no switch should have been triggered since reschedule aborted.
+    assert_eq!(CTX_SWITCH_TRIGGER_COUNT.load(Ordering::SeqCst), 0);
 }

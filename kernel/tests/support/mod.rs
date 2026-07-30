@@ -13,6 +13,7 @@ use specs::kernel::{
 };
 
 pub static CTX_SWITCH_TRIGGER_COUNT: AtomicU32 = AtomicU32::new(0);
+pub static TICK_ACK_COUNT: AtomicU32 = AtomicU32::new(0);
 pub static mut POOL_KERNEL_INIT: [u8; 1024] = [0; 1024];
 pub static mut POOL_SPAWN_OK: [u8; 1024] = [0; 1024];
 pub static mut POOL_SPAWN_REJECT: [u8; 1024] = [0; 1024];
@@ -24,6 +25,7 @@ pub static mut POOL_TICK_SINGLE_TASK: [u8; 1024] = [0; 1024];
 pub static mut POOL_TICK_NO_TASKS: [u8; 1024] = [0; 1024];
 pub static mut POOL_QUEUE_FULL: [u8; 16384] = [0; 16384];
 pub static mut POOL_YIELD_SAME_PRIORITY: [u8; 4096] = [0; 4096];
+pub static mut POOL_TICK_ACK_ON_ERROR: [u8; 16384] = [0; 16384];
 
 const TEST_MAX_TASKS: usize = 32;
 static mut MOCK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; TEST_MAX_TASKS] =
@@ -158,6 +160,7 @@ impl SystemTimer for MockSystemTimer {
     }
 
     fn acknowledge_tick_interrupt(&mut self) -> Result<(), Self::Error> {
+        TICK_ACK_COUNT.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
 
