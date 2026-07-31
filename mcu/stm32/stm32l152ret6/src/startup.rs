@@ -5,6 +5,8 @@ use core::ptr::{addr_of, addr_of_mut, read_volatile, write_volatile};
 const RAM_ORIGIN: u32 = 0x2000_0000;
 const RAM_LENGTH_BYTES: u32 = 80 * 1024;
 const ESTACK: u32 = RAM_ORIGIN + RAM_LENGTH_BYTES;
+const FLASH_ORIGIN: u32 = 0x0800_0000;
+const SCB_VTOR: *mut u32 = 0xE000_ED08 as *mut u32;
 
 // defining linker symbols (match linker.ld)
 unsafe extern "C" {
@@ -33,6 +35,7 @@ pub extern "C" fn Default_Handler() -> ! {
 #[no_mangle] // prevent compiler from renaming func
 pub extern "C" fn Reset() -> ! {
     unsafe {
+        write_volatile(SCB_VTOR, FLASH_ORIGIN); // boot-time remap can alias 0x0 away from flash, so point VTOR at flash explicitly or exception vectors fetch the wrong table
         copy_data(); // copy data from FLASH to RAM
         zero_bss(); // zero bss section in RAM
         main(); // hand over to user execution code
