@@ -1,17 +1,16 @@
-
 // core lib imports
 use core::ptr::addr_of_mut;
 
 // local imports
 use crate::limits::MAX_TASKS;
 use crate::system_timer::NucleoSystemTimer;
-use cortex_m::{V7mContextSwitch, CortexMCriticalSection, CortexMStackGuard};
 use cortex_m::v7m::{configure_kernel_interrupt_priorities, set_tick_callback};
-use kernel::{Kernel, KernelStackResources};
+use cortex_m::{CortexMCriticalSection, CortexMStackGuard, V7mContextSwitch};
 use kernel::scheduler::FppScheduler;
-use specs::common::TaskId;
-use specs::kernel::{Result, TaskPriority, SystemTimer};
+use kernel::{Kernel, KernelStackResources};
 use specs::arch::StackGuardContext;
+use specs::common::TaskId;
+use specs::kernel::{Result, SystemTimer, TaskPriority};
 
 // RM0038 rev 18 s6.2.3 "MSI clock" pg 132: SYSCLK default post-reset = MSI @ 2,097,152 Hz
 const SYSCLK_HZ: u32 = 2_097_152;
@@ -40,11 +39,16 @@ fn on_systick_tick() {
 
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
-    kernel: Kernel<V7mContextSwitch, CortexMCriticalSection, FppScheduler, CortexMStackGuard, NucleoSystemTimer>,
+    kernel: Kernel<
+        V7mContextSwitch,
+        CortexMCriticalSection,
+        FppScheduler,
+        CortexMStackGuard,
+        NucleoSystemTimer,
+    >,
 }
 
 impl System {
-
     /// DESCRIPTION
     /// create a board-composed system instance (`stack_pool` is SRAM reserved for kernel task stacks)
     pub fn new_with_pool(stack_pool: &'static mut [u8]) -> Self {
@@ -64,11 +68,9 @@ impl System {
                 V7mContextSwitch,
                 CortexMCriticalSection,
                 FppScheduler::new(),
-                KernelStackResources::new(
-                    stack_pool,
-                    CortexMStackGuard,
-                    unsafe { &mut *addr_of_mut!(TASK_STACK_GUARD_SLOTS) },
-                ),
+                KernelStackResources::new(stack_pool, CortexMStackGuard, unsafe {
+                    &mut *addr_of_mut!(TASK_STACK_GUARD_SLOTS)
+                }),
                 system_timer,
             ),
         }
@@ -101,7 +103,9 @@ impl System {
         entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
     ) -> Result<()> {
-        return self.kernel.spawn_task(task_id, priority, stack_size, entry_point, entry_arg);
+        return self
+            .kernel
+            .spawn_task(task_id, priority, stack_size, entry_point, entry_arg);
     }
 
     /// DESCRIPTION
@@ -118,6 +122,5 @@ impl System {
         }
 
         // TODO: "hand over control to scheduler/context-switch start path
-
     }
 }

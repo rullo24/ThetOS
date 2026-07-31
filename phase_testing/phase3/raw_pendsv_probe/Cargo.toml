@@ -1,0 +1,17 @@
+[package]
+name = "raw_pendsv_probe"
+version = "0.1.0"
+edition = "2021"
+build = "../../../.cargo/build.rs"
+
+[[bin]]
+name = "raw_pendsv_probe"
+
+[dependencies]
+entry = { path = "../../../macros/entry" }
+nucleo_l152re = { path = "../../../bsp/nucleo/nucleo_l152re" }
+cortex_m = { path = "../../../arch/cortex-m" }
+specs = { workspace = true }
+
+[build-dependencies]
+toml = { workspace = true }
