@@ -90,13 +90,6 @@ fn app_main() -> ! {
         Err(e) => panic!("failed to init task context B: {:?}", e),
     };
 
-    // initialise task context C
-    let ctx_b_dup = match ctx_switch.initialise_task_context(top_b, limit_b, task_b, null_mut()) {
-        Ok(c) => c,
-        Err(e) => panic!("failed to init task context B: {:?}", e),
-    };
-    _ = ctx_b_dup;
-
     // set task context pointers and PSP/TCB
     unsafe {
         addr_of_mut!(CTX_A).cast::<V7mTaskContext>().write(ctx_a);
