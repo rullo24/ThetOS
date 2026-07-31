@@ -14,10 +14,13 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 static mut STACK_POOL: [u8; 2048] = [0; 2048];
+static mut COUNTER: u32 = 0;
 
 extern "C" fn dummy_task(_arg: *mut ()) -> ! {
     loop {
-        core::hint::spin_loop();
+        unsafe {
+            COUNTER = COUNTER.wrapping_add(1);
+        }
     }
 }
 
