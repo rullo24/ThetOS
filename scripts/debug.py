@@ -66,6 +66,7 @@ def main() -> None:
             "target extended-remote :3333",
             "load",
             "monitor reset halt",
+            "monitor cortex_m maskisr steponly",  # keep interrupts live on `continue`, hold them off only mid-step
             "break main",
             "continue",
         ]
