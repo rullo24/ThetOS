@@ -261,10 +261,22 @@ where
         }
         self.task_count += 1;
 
-        // a genuine preemption (something was already running and got
-        // displaced) must trigger the real context switch; the very first
-        // spawn has nothing to switch from, so it does not.
-        if preempt_current && previous_task.is_some() {
+        // a preemption (including the very first spawn, which preempts
+        // "nothing running") must trigger the real context switch, so
+        // PendSV actually knows which task to restore.
+        if preempt_current {
+            // outgoing side: None on the first spawn (nothing to save);
+            // PendSV_Handler's asm already skips the save on a null pointer.
+            let outgoing_ctx: Option<*mut CtxSwitchType::TaskContext> = previous_task
+                .and_then(|id| self.tcb_list[id.0 as usize].as_mut())
+                .map(|tcb| tcb.get_context_mut() as *mut _);
+            self.ctx_switch.set_current_task_context(outgoing_ctx);
+
+            // incoming side: this spawn's own task, which just became curr_task above.
+            if let Some(tcb) = self.tcb_list[idx].as_ref() {
+                self.ctx_switch.activate_next_task(tcb.get_context());
+            }
+
             self.ctx_switch.trigger_pendsv_switch();
         }
 
@@ -338,7 +350,23 @@ where
             self.curr_task = Some(next_task_id);
         }
 
-        Ok(self.curr_task != previous_task)
+        let switched = self.curr_task != previous_task;
+        if switched {
+            // outgoing side: None if nothing was running before this reschedule.
+            let outgoing_ctx: Option<*mut CtxSwitchType::TaskContext> = previous_task
+                .and_then(|id| self.tcb_list[id.0 as usize].as_mut())
+                .map(|tcb| tcb.get_context_mut() as *mut _);
+            self.ctx_switch.set_current_task_context(outgoing_ctx);
+
+            // incoming side: the task reschedule() just selected above.
+            if let Some(next_task_id) = self.curr_task {
+                if let Some(tcb) = self.tcb_list[next_task_id.0 as usize].as_ref() {
+                    self.ctx_switch.activate_next_task(tcb.get_context());
+                }
+            }
+        }
+
+        Ok(switched)
     }
 
     /// DESCRIPTION

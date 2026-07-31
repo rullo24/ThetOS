@@ -14,4 +14,10 @@ pub trait ContextSwitch {
     ) -> Result<Self::TaskContext, ContextSwitchError>;
 
     fn trigger_pendsv_switch(&self);
+
+    /// point the next PendSV restore at this task's context
+    fn activate_next_task(&self, ctx: &Self::TaskContext);
+
+    /// point PendSV's save side at the outgoing task's context slot (None if nothing was running)
+    fn set_current_task_context(&self, ctx: Option<*mut Self::TaskContext>);
 }

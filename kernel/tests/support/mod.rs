@@ -2,7 +2,7 @@ use core::ops::FnOnce;
 use core::ptr::addr_of_mut;
 use core::result::Result;
 use core::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use kernel::KernelStackResources;
 use specs::arch::{
     ContextSwitch, ContextSwitchError, StackGuard, StackGuardContext, StackGuardError,
@@ -28,6 +28,9 @@ pub static mut POOL_TICK_ACK_ON_ERROR: [u8; 16384] = [0; 16384];
 pub static mut POOL_SPAWN_PREEMPT: [u8; 4096] = [0; 4096];
 pub static mut POOL_SPAWN_NO_PREEMPT: [u8; 4096] = [0; 4096];
 pub static mut POOL_SPAWN_PREEMPT_REQUEUE_FULL: [u8; 16384] = [0; 16384];
+pub static mut POOL_SPAWN_FIRST_TASK_CONTEXT: [u8; 1024] = [0; 1024];
+pub static mut POOL_SPAWN_PREEMPT_CONTEXT: [u8; 4096] = [0; 4096];
+pub static mut POOL_TICK_SWITCH_CONTEXT: [u8; 4096] = [0; 4096];
 
 const TEST_MAX_TASKS: usize = 32;
 static mut MOCK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; TEST_MAX_TASKS] =
@@ -67,15 +70,25 @@ impl StackGuard for MockStackGuard {
 #[derive(Clone)]
 pub struct MockContextSwitch {
     pub trigger_count: Arc<AtomicU32>,
+    pub activated_contexts: Arc<Mutex<Vec<usize>>>,
+    pub outgoing_contexts: Arc<Mutex<Vec<Option<usize>>>>,
 }
 
 impl MockContextSwitch {
     /// DESCRIPTION
-    /// create a mock w/ its own private trigger counter -> avoids sharing
-    /// mutable state across tests running in parallel (cargo test's default).
+    /// create a mock w/ its own private trigger counter and call logs ->
+    /// avoids sharing mutable state across tests running in parallel
+    /// (cargo test's default).
     pub fn new() -> (Self, Arc<AtomicU32>) {
         let trigger_count = Arc::new(AtomicU32::new(0));
-        (Self { trigger_count: trigger_count.clone() }, trigger_count)
+        (
+            Self {
+                trigger_count: trigger_count.clone(),
+                activated_contexts: Arc::new(Mutex::new(Vec::new())),
+                outgoing_contexts: Arc::new(Mutex::new(Vec::new())),
+            },
+            trigger_count,
+        )
     }
 }
 
@@ -95,6 +108,17 @@ impl ContextSwitch for MockContextSwitch {
 
     fn trigger_pendsv_switch(&self) {
         self.trigger_count.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn activate_next_task(&self, ctx: &Self::TaskContext) {
+        self.activated_contexts.lock().unwrap().push(*ctx);
+    }
+
+    fn set_current_task_context(&self, ctx: Option<*mut Self::TaskContext>) {
+        // dereference now (test-only, synchronous, no real ISR) to record
+        // which outgoing task's context slot this call pointed at.
+        let recorded = ctx.map(|p| unsafe { *p });
+        self.outgoing_contexts.lock().unwrap().push(recorded);
     }
 }
 

@@ -5,6 +5,7 @@ use specs::arch::ContextSwitch;
 use super::v7m_exception_frame::{v7m_default_task_exit, V7mHwExceptionFrame, V7mTaskInitialStackHead};
 use super::V7mTaskContext; // pull in the task context type
 use super::v7m_system_control_block::request_pendsv_pending;
+use super::{set_current_task_tcb, set_next_task_psp};
 use specs::arch::error::ContextSwitchError;
 
 pub struct V7mContextSwitch;
@@ -81,6 +82,22 @@ impl ContextSwitch for V7mContextSwitch {
     fn trigger_pendsv_switch(&self) {
         unsafe {
             request_pendsv_pending(); // set PendSV pending bit HIGH
+        }
+    }
+
+    /// DESCRIPTION
+    /// point the next PendSV restore at this task's context
+    fn activate_next_task(&self, ctx: &Self::TaskContext) {
+        unsafe {
+            set_next_task_psp(ctx.sp);
+        }
+    }
+
+    /// DESCRIPTION
+    /// point PendSV's save side at the outgoing task's context slot (null skips the save)
+    fn set_current_task_context(&self, ctx: Option<*mut Self::TaskContext>) {
+        unsafe {
+            set_current_task_tcb(ctx.unwrap_or(core::ptr::null_mut()));
         }
     }
 
