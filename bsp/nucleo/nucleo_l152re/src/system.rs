@@ -60,8 +60,7 @@ impl System {
         let mut system_timer = NucleoSystemTimer::new();
         system_timer
             .initialise(SYSTICK_RELOAD_TICKS)
-            .expect("SysTick initialise failed");
-        system_timer.start().expect("SysTick start failed");
+            .expect("SysTick initialise failed"); // configured but not started -> run() starts it once all init is complete
 
         Self {
             kernel: Kernel::new(
@@ -115,8 +114,10 @@ impl System {
     }
 
     /// DESCRIPTION
-    /// start the system runtime.
-    pub fn run(&self) -> ! {
+    /// start the system runtime. call once, after all tasks are spawned -> starts SysTick, so no tick can land before init is complete.
+    pub fn run(&mut self) -> ! {
+        self.kernel.start_system_timer().expect("SysTick start failed");
+
         loop {
             core::hint::spin_loop();
         }

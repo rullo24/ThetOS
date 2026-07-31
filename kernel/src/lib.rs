@@ -269,6 +269,12 @@ where
     }
 
     /// DESCRIPTION
+    /// start periodic tick generation; call only once all init (including task spawning) is complete
+    pub fn start_system_timer(&mut self) -> Result<()> {
+        self.system_timer.start().map_err(map_timer_err_to_kernel_err)
+    }
+
+    /// DESCRIPTION
     /// handle a system timer tick interrupt. acknowledges the tick before
     /// running any reschedule policy work, so the interrupt source is
     /// cleared even if reschedule() itself errors -> an unacknowledged tick
