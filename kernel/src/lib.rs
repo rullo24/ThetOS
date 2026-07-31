@@ -261,34 +261,34 @@ where
         }
         self.task_count += 1;
 
-        // a preemption (including the very first spawn, which preempts
-        // "nothing running") must trigger the real context switch, so
-        // PendSV actually knows which task to restore.
-        if preempt_current {
-            // outgoing side: None on the first spawn (nothing to save);
-            // PendSV_Handler's asm already skips the save on a null pointer.
-            let outgoing_ctx: Option<*mut CtxSwitchType::TaskContext> = previous_task
-                .and_then(|id| self.tcb_list[id.0 as usize].as_mut())
-                .map(|tcb| tcb.get_context_mut() as *mut _);
-            self.ctx_switch.set_current_task_context(outgoing_ctx);
-
-            // incoming side: this spawn's own task, which just became curr_task above.
-            if let Some(tcb) = self.tcb_list[idx].as_ref() {
-                self.ctx_switch.activate_next_task(tcb.get_context());
-            }
-
-            self.ctx_switch.trigger_pendsv_switch();
-        }
+        // spawn_task is bookkeeping only -> it never touches PendSV or the
+        // hardware switch, even when it decides this task preempts the
+        // current one. The switch happens at the next reschedule (tick or
+        // yield), or -> for the very first task -> via Kernel::start().
 
         return Ok(()); // success
     }
 
     /// DESCRIPTION
-    /// start periodic tick generation; call only once all init (including task spawning) is complete
-    pub fn start_system_timer(&mut self) -> Result<()> {
+    /// start the system: begin periodic ticks, then perform the one deferred
+    /// dispatch into whichever task spawn_task's bookkeeping selected as
+    /// curr_task (if any) -> call only once, after all init (including task
+    /// spawning) is complete. Every switch after this point goes through
+    /// reschedule() via a tick or a yield.
+    pub fn start(&mut self) -> Result<()> {
         self.system_timer
             .start()
-            .map_err(map_timer_err_to_kernel_err)
+            .map_err(map_timer_err_to_kernel_err)?;
+
+        if let Some(task_id) = self.curr_task {
+            self.ctx_switch.set_current_task_context(None); // nothing was running before this
+            if let Some(tcb) = self.tcb_list[task_id.0 as usize].as_ref() {
+                self.ctx_switch.activate_next_task(tcb.get_context());
+            }
+            self.ctx_switch.trigger_pendsv_switch();
+        }
+
+        Ok(())
     }
 
     /// DESCRIPTION

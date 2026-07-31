@@ -9,11 +9,11 @@ mod support;
 
 use support::{
     dummy_entry, test_resources, MockContextSwitch, MockCriticalSection, MockScheduler,
-    POOL_CRIT, POOL_KERNEL_INIT, POOL_QUEUE_FULL, POOL_SPAWN_FIRST_TASK_CONTEXT,
-    POOL_SPAWN_NO_PREEMPT, POOL_SPAWN_OK, POOL_SPAWN_PREEMPT, POOL_SPAWN_PREEMPT_CONTEXT,
-    POOL_SPAWN_PREEMPT_REQUEUE_FULL, POOL_SPAWN_REJECT, POOL_TICK_ACK_ON_ERROR,
-    POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS, POOL_TICK_SINGLE_TASK, POOL_TICK_SWITCH,
-    POOL_TICK_SWITCH_CONTEXT, POOL_YIELD, POOL_YIELD_SAME_PRIORITY,
+    POOL_CRIT, POOL_KERNEL_INIT, POOL_KERNEL_START_NO_TASK, POOL_QUEUE_FULL,
+    POOL_SPAWN_FIRST_TASK_CONTEXT, POOL_SPAWN_NO_PREEMPT, POOL_SPAWN_OK, POOL_SPAWN_PREEMPT,
+    POOL_SPAWN_PREEMPT_CONTEXT, POOL_SPAWN_PREEMPT_REQUEUE_FULL, POOL_SPAWN_REJECT,
+    POOL_TICK_ACK_ON_ERROR, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS, POOL_TICK_SINGLE_TASK,
+    POOL_TICK_SWITCH, POOL_TICK_SWITCH_CONTEXT, POOL_YIELD, POOL_YIELD_SAME_PRIORITY,
 };
 
 use crate::support::MockSystemTimer;
@@ -146,13 +146,12 @@ fn on_tick_interrupt_triggers_switch_when_task_changes() {
         .spawn_task(TaskId(2), priority, 1024, dummy_entry, null_mut())
         .unwrap();
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
-    // the first spawn itself now triggers a switch too (it's what actually
-    // enters the first task -> see spawn_task's preempt_current gate).
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+    // spawn_task is bookkeeping only -> no trigger until the tick below.
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 
     kernel.on_tick_interrupt().unwrap();
 
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 2);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
     assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
 }
 
@@ -179,14 +178,13 @@ fn on_tick_interrupt_does_not_trigger_switch_when_no_action_requested() {
     kernel
         .spawn_task(TaskId(2), priority, 1024, dummy_entry, null_mut())
         .unwrap();
-    // the first spawn itself triggers a switch -> see spawn_task's
-    // preempt_current gate (it's what actually enters the first task).
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+    // spawn_task is bookkeeping only -> no trigger from either spawn.
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 
     kernel.on_tick_interrupt().unwrap();
 
-    // TickAction::None -> no reschedule attempted, so no additional trigger.
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+    // TickAction::None -> no reschedule attempted, so no trigger at all.
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
 }
 
@@ -209,9 +207,9 @@ fn on_tick_interrupt_does_not_trigger_switch_when_only_task_reselects_itself() {
 
     kernel.on_tick_interrupt().unwrap();
 
-    // the spawn itself triggers a switch (entering the first task); the
-    // tick reselecting the same single task does not add another.
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+    // spawn_task never triggers, and reselecting the same single task
+    // doesn't count as a switch either -> no trigger at all.
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
 }
 
@@ -301,17 +299,17 @@ fn yield_now_same_priority_advances_to_next_task() {
         .spawn_task(TaskId(2), priority, 1024, dummy_entry, null_mut())
         .unwrap();
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
-    // the first spawn itself triggers a switch (entering the first task).
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+    // spawn_task is bookkeeping only -> no trigger until the yields below.
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 
     // first yield: advances straight to TaskId(2), no wasted self-reselect.
     kernel.yield_now().unwrap();
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 2);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
     assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
 
     // second yield: cycles back to TaskId(1).
     kernel.yield_now().unwrap();
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 3);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 2);
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
 }
 
@@ -349,9 +347,9 @@ fn on_tick_interrupt_acknowledges_tick_even_when_reschedule_errors() {
     assert_eq!(result, Err(KernelError::ReadyQueueFull));
     // acknowledge must still have run, despite reschedule() failing.
     assert_eq!(ack_count.load(Ordering::SeqCst), 1);
-    // reschedule() errors out (on the full requeue) before ever reaching the
-    // switched/context wiring, so only the initial spawn's trigger counts.
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+    // spawn_task never triggers, and reschedule() errors out before it
+    // could trigger one either -> no trigger at all.
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 }
 
 #[test]
@@ -372,27 +370,29 @@ fn spawn_task_preempts_current_when_higher_priority() {
         .spawn_task(TaskId(1), TaskPriority::new(20).unwrap(), 1024, dummy_entry, null_mut())
         .unwrap();
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
-    // the first spawn itself triggers a switch (entering the first task).
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+    // spawn_task is bookkeeping only -> no hardware trigger from a spawn.
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 
-    // higher-priority task spawns second -> must preempt immediately, not
-    // wait for the next yield/tick.
+    // higher-priority task spawns second -> preempts in the scheduler's
+    // bookkeeping immediately (curr_task updates now), but the hardware
+    // switch itself still only happens at the next reschedule.
     kernel
         .spawn_task(TaskId(2), TaskPriority::new(5).unwrap(), 1024, dummy_entry, null_mut())
         .unwrap();
 
     assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 2);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 
     // TaskId(2) remains the highest-priority ready task -> yielding does NOT
     // hand control back to the lower-priority TaskId(1). strict FPP priority
     // beats a cooperative yield; TaskId(1) only runs once TaskId(2) actually
     // blocks or completes (no such API exists yet in this phase).
-    // yield_now() still unconditionally signals a switch even though the
-    // selected task didn't change (matches its existing tested semantics).
+    // yield_now() still unconditionally triggers a switch even though the
+    // selected task didn't change (matches its existing tested semantics) ->
+    // this is the first and only trigger in this test.
     kernel.yield_now().unwrap();
     assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 3);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
 }
 
 #[test]
@@ -416,9 +416,8 @@ fn spawn_task_does_not_preempt_when_lower_priority() {
         .unwrap();
 
     assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
-    // the first spawn itself triggers a switch; the second, lower-priority
-    // spawn does not preempt, so it adds no further trigger.
-    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+    // spawn_task never triggers, regardless of preemption.
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 }
 
 #[test]
@@ -473,34 +472,9 @@ fn spawn_task_preemption_actually_requeues_previous_task() {
 }
 
 #[test]
-fn spawn_task_first_task_activates_context_with_no_outgoing() {
-    let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_FIRST_TASK_CONTEXT) };
-    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
-    let activated_contexts = mock_ctx_switch.activated_contexts.clone();
-    let outgoing_contexts = mock_ctx_switch.outgoing_contexts.clone();
-    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
-    let mut kernel = Kernel::new(
-        mock_ctx_switch,
-        MockCriticalSection,
-        MockScheduler,
-        test_resources(pool),
-        mock_timer,
-    );
-
-    kernel
-        .spawn_task(TaskId(1), TaskPriority::new(1).unwrap(), 1024, dummy_entry, null_mut())
-        .unwrap();
-
-    // the first-ever switch has nothing to save -> outgoing side is None,
-    // but the incoming side must still point PendSV at the new task.
-    assert_eq!(*outgoing_contexts.lock().unwrap(), vec![None]);
-    assert_eq!(activated_contexts.lock().unwrap().len(), 1);
-}
-
-#[test]
-fn spawn_task_preemption_activates_correct_outgoing_and_incoming_context() {
+fn spawn_task_never_touches_pendsv_context_even_on_preemption() {
     let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_PREEMPT_CONTEXT) };
-    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
     let activated_contexts = mock_ctx_switch.activated_contexts.clone();
     let outgoing_contexts = mock_ctx_switch.outgoing_contexts.clone();
     let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
@@ -519,14 +493,66 @@ fn spawn_task_preemption_activates_correct_outgoing_and_incoming_context() {
         .spawn_task(TaskId(2), TaskPriority::new(5).unwrap(), 1024, dummy_entry, null_mut())
         .unwrap();
 
-    let activated = activated_contexts.lock().unwrap().clone();
-    let outgoing = outgoing_contexts.lock().unwrap().clone();
+    // spawn_task is pure bookkeeping -> curr_task updates via preemption,
+    // but neither the PendSV context hooks nor the trigger are ever touched.
+    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
+    assert_eq!(activated_contexts.lock().unwrap().len(), 0);
+    assert_eq!(outgoing_contexts.lock().unwrap().len(), 0);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
+}
 
-    // two switches: entering TaskId(1), then preempting it for TaskId(2).
-    assert_eq!(activated.len(), 2);
-    assert_eq!(outgoing, vec![None, Some(activated[0])]);
-    // distinct tasks must not share a context value.
-    assert_ne!(activated[0], activated[1]);
+#[test]
+fn kernel_start_dispatches_into_first_spawned_task() {
+    let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_FIRST_TASK_CONTEXT) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let activated_contexts = mock_ctx_switch.activated_contexts.clone();
+    let outgoing_contexts = mock_ctx_switch.outgoing_contexts.clone();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        MockScheduler,
+        test_resources(pool),
+        mock_timer,
+    );
+
+    kernel
+        .spawn_task(TaskId(1), TaskPriority::new(1).unwrap(), 1024, dummy_entry, null_mut())
+        .unwrap();
+    // spawning alone never dispatches anything.
+    assert_eq!(activated_contexts.lock().unwrap().len(), 0);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
+
+    kernel.start().unwrap();
+
+    // start() performs the one deferred dispatch: nothing was running
+    // before (outgoing is None), and the spawned task is activated + triggered.
+    assert_eq!(*outgoing_contexts.lock().unwrap(), vec![None]);
+    assert_eq!(activated_contexts.lock().unwrap().len(), 1);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn kernel_start_is_a_no_op_when_no_task_spawned() {
+    let pool = unsafe { &mut *addr_of_mut!(POOL_KERNEL_START_NO_TASK) };
+    let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
+    let activated_contexts = mock_ctx_switch.activated_contexts.clone();
+    let outgoing_contexts = mock_ctx_switch.outgoing_contexts.clone();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        MockScheduler,
+        test_resources(pool),
+        mock_timer,
+    );
+
+    let result = kernel.start();
+
+    assert!(result.is_ok());
+    assert_eq!(activated_contexts.lock().unwrap().len(), 0);
+    assert_eq!(outgoing_contexts.lock().unwrap().len(), 0);
+    assert_eq!(trigger_count.load(Ordering::SeqCst), 0);
 }
 
 #[test]
@@ -554,16 +580,19 @@ fn on_tick_interrupt_switch_activates_correct_outgoing_and_incoming_context() {
         .spawn_task(TaskId(2), priority, 1024, dummy_entry, null_mut())
         .unwrap();
 
-    // only the first spawn (entering TaskId(1)) has activated a context so far.
-    assert_eq!(activated_contexts.lock().unwrap().len(), 1);
+    // spawn_task never activates anything on its own.
+    assert_eq!(activated_contexts.lock().unwrap().len(), 0);
 
     kernel.on_tick_interrupt().unwrap();
 
     let activated = activated_contexts.lock().unwrap().clone();
     let outgoing = outgoing_contexts.lock().unwrap().clone();
 
-    // the tick-driven switch adds a second activation (TaskId(2)) and its
-    // matching outgoing save of TaskId(1)'s context.
-    assert_eq!(activated.len(), 2);
-    assert_eq!(outgoing, vec![None, Some(activated[0])]);
+    // the tick-driven switch is the only dispatch in this test: TaskId(2)
+    // activated, with TaskId(1)'s context correctly captured as outgoing.
+    assert_eq!(activated.len(), 1);
+    assert_eq!(outgoing.len(), 1);
+    assert!(outgoing[0].is_some());
+    // distinct tasks must not share a context value.
+    assert_ne!(outgoing[0], Some(activated[0]));
 }

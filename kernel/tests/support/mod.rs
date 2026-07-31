@@ -31,6 +31,7 @@ pub static mut POOL_SPAWN_PREEMPT_REQUEUE_FULL: [u8; 16384] = [0; 16384];
 pub static mut POOL_SPAWN_FIRST_TASK_CONTEXT: [u8; 1024] = [0; 1024];
 pub static mut POOL_SPAWN_PREEMPT_CONTEXT: [u8; 4096] = [0; 4096];
 pub static mut POOL_TICK_SWITCH_CONTEXT: [u8; 4096] = [0; 4096];
+pub static mut POOL_KERNEL_START_NO_TASK: [u8; 1024] = [0; 1024];
 
 const TEST_MAX_TASKS: usize = 32;
 static mut MOCK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; TEST_MAX_TASKS] =

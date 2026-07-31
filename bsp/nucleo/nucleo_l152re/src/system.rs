@@ -113,11 +113,8 @@ impl System {
             (*addr_of_mut!(SYSTEM)).as_mut().unwrap()
         };
 
-        // start SysTick (initialisation now complete)
-        system
-            .kernel
-            .start_system_timer()
-            .expect("SysTick start failed");
+        // start SysTick and dispatch into the first task (initialisation now complete)
+        system.kernel.start().expect("kernel start failed");
 
         loop {
             core::hint::spin_loop();
