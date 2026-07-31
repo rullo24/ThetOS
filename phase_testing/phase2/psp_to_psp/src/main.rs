@@ -2,17 +2,17 @@
 #![no_main]
 
 // core lib imports
+use core::mem::MaybeUninit;
 use core::panic::PanicInfo;
 use core::ptr::{addr_of_mut, null_mut};
-use core::mem::MaybeUninit;
 
 // local imports
-use specs::arch::ContextSwitch;
-use entry::entry;
-use cortex_m::V7mContextSwitch;
-use cortex_m::v7m::{set_current_task_tcb, set_next_task_psp, V7mTaskContext};
-use nucleo_l152re as _;
 use cortex_m::common::interrupts::enable_interrupts;
+use cortex_m::v7m::{set_current_task_tcb, set_next_task_psp, V7mTaskContext};
+use cortex_m::V7mContextSwitch;
+use entry::entry;
+use nucleo_l152re as _;
+use specs::arch::ContextSwitch;
 
 #[repr(C, align(8))]
 struct TaskStackPool([u8; 4096]);
@@ -45,7 +45,6 @@ extern "C" fn task_a(_arg: *mut ()) -> ! {
             ctx_switch.trigger_pendsv_switch();
         }
     }
-
 }
 
 /// DESCRIPTION
@@ -68,7 +67,6 @@ extern "C" fn task_b(_arg: *mut ()) -> ! {
 
 #[entry]
 fn app_main() -> ! {
-
     // define stack pools
     let pool_a = unsafe { &mut (*addr_of_mut!(TASK_STACK_A)).0 };
     let pool_b = unsafe { &mut (*addr_of_mut!(TASK_STACK_B)).0 };
@@ -79,28 +77,25 @@ fn app_main() -> ! {
     let limit_b = pool_b.as_mut_ptr();
     let top_b = limit_b.wrapping_add(pool_b.len());
     let ctx_switch = V7mContextSwitch;
-    
+
     // initialise task context A
-    let ctx_a = match ctx_switch.initialise_task_context(
-        top_a,
-        limit_a,
-        task_a,
-        null_mut(),
-    ) {
+    let ctx_a = match ctx_switch.initialise_task_context(top_a, limit_a, task_a, null_mut()) {
         Ok(c) => c,
         Err(e) => panic!("failed to init task context A: {:?}", e),
     };
 
     // initialise task context B
-    let ctx_b = match ctx_switch.initialise_task_context(
-        top_b,
-        limit_b,
-        task_b,
-        null_mut(),
-    ) {
+    let ctx_b = match ctx_switch.initialise_task_context(top_b, limit_b, task_b, null_mut()) {
         Ok(c) => c,
         Err(e) => panic!("failed to init task context B: {:?}", e),
     };
+
+    // initialise task context C
+    let ctx_b_dup = match ctx_switch.initialise_task_context(top_b, limit_b, task_b, null_mut()) {
+        Ok(c) => c,
+        Err(e) => panic!("failed to init task context B: {:?}", e),
+    };
+    _ = ctx_b_dup;
 
     // set task context pointers and PSP/TCB
     unsafe {
@@ -117,5 +112,4 @@ fn app_main() -> ! {
     loop {
         core::hint::spin_loop();
     }
-
 }
