@@ -24,7 +24,7 @@ const SYSTICK_RELOAD_TICKS: u32 = (SYSCLK_HZ * SYSTICK_PERIOD_MS) / 1000 - 1;
 /// global var to hold stack guard slots for static slot tables
 static mut TASK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; MAX_TASKS] = [None; MAX_TASKS];
 
-/// single running System instance -> reachable from the tick callback, populated by install_as_tick_source()
+/// single running System instance -> reachable from the tick callback
 static mut SYSTEM: Option<System> = None;
 
 /// DESCRIPTION
@@ -75,16 +75,6 @@ impl System {
         }
     }
 
-    /// DESCRIPTION
-    /// move this System into the global static and register it as the SysTick tick source; caller must ensure this is called at most once
-    pub unsafe fn install_as_tick_source(self) -> &'static mut System {
-        unsafe {
-            SYSTEM = Some(self);
-            set_tick_callback(on_systick_tick);
-            (*addr_of_mut!(SYSTEM)).as_mut().unwrap()
-        }
-    }
-
     // TODO: remove this method before release
     /// DESCRIPTION
     /// request PendSV pending.
@@ -114,14 +104,23 @@ impl System {
     }
 
     /// DESCRIPTION
-    /// start the system runtime. call once, after all tasks are spawned -> starts SysTick, so no tick can land before init is complete.
-    pub fn run(&mut self) -> ! {
-        self.kernel.start_system_timer().expect("SysTick start failed");
+    /// start the system runtime. call once, after all tasks are spawned -> installs the tick source and starts SysTick, so no tick can land before init is complete. consumes `self` because this never returns.
+    pub fn run(self) -> ! {
+        // set SysTick callback
+        let system: &'static mut System = unsafe {
+            SYSTEM = Some(self);
+            set_tick_callback(on_systick_tick);
+            (*addr_of_mut!(SYSTEM)).as_mut().unwrap()
+        };
+
+        // start SysTick (initialisation now complete)
+        system
+            .kernel
+            .start_system_timer()
+            .expect("SysTick start failed");
 
         loop {
             core::hint::spin_loop();
         }
-
-        // TODO: "hand over control to scheduler/context-switch start path
     }
 }

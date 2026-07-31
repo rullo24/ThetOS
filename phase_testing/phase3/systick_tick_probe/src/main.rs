@@ -37,10 +37,6 @@ fn app_main() -> ! {
         )
         .unwrap();
 
-    let system = unsafe { system.install_as_tick_source() };
-    let _ = system;
-
-    loop {
-        core::hint::spin_loop();
-    }
+    // run RTOS loop -> installs tick source and starts SysTick internally
+    system.run();
 }
