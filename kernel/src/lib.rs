@@ -193,8 +193,6 @@ where
             .initialise_task_context(stack_top, stack_limit, entry_point, entry_arg)
             .map_err(map_ctx_switch_err_to_kernel_err)?; // throw error upwards if fails
 
-        // TODO(phase 3): capture and store `CtxSwitchType::TaskContext` per task, then connect `sp` to arch first/next switch (e.g. `PENDSV_NEXT_PSP`) before `yield`; Phase 2 uses the primitive_switch example path.
-
         // build the stack guard context
         let mut stack_guard_ctx = build_default_stack_guard_ctx(stack_top, stack_limit)?;
         self.stack_resources
@@ -233,7 +231,11 @@ where
                 bottom: stack_limit,
                 top: stack_top,
             },
-            task_state: if preempt_current { TaskState::Running } else { TaskState::Ready },
+            task_state: if preempt_current {
+                TaskState::Running
+            } else {
+                TaskState::Ready
+            },
             task_context, // capture from initialise_task_context
             stack_guard_ctx,
             task_priority: priority,
@@ -249,7 +251,8 @@ where
             if let Some(previous_task_id) = previous_task {
                 self.set_task_state(previous_task_id, TaskState::Ready)?;
                 if let Some(tcb) = self.tcb_list[previous_task_id.0 as usize].as_ref() {
-                    self.scheduler.enqueue_runnable(previous_task_id, tcb.get_priority())?;
+                    self.scheduler
+                        .enqueue_runnable(previous_task_id, tcb.get_priority())?;
                 }
             }
             self.curr_task = Some(task_id); // new task preempts and becomes current
@@ -271,7 +274,9 @@ where
     /// DESCRIPTION
     /// start periodic tick generation; call only once all init (including task spawning) is complete
     pub fn start_system_timer(&mut self) -> Result<()> {
-        self.system_timer.start().map_err(map_timer_err_to_kernel_err)
+        self.system_timer
+            .start()
+            .map_err(map_timer_err_to_kernel_err)
     }
 
     /// DESCRIPTION

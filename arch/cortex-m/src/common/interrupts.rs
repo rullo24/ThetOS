@@ -51,7 +51,7 @@ pub fn set_irqs_primask(state: bool) {
     unsafe {
         core::arch::asm!(
             "msr primask, {state}",
-            state = in(reg) state as u32,
+            state = in(reg) (!state) as u32, // PRIMASK 0=unmasked -> unmask(true) must write 0, not 1
             options(nomem, nostack, preserves_flags),
         );
     }

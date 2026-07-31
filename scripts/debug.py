@@ -67,6 +67,7 @@ def main() -> None:
             "load",
             "monitor reset halt",
             "monitor cortex_m maskisr steponly",  # keep interrupts live on `continue`, hold them off only mid-step
+            "set pagination off",  # long generic Rust frame descriptions otherwise stall waiting on a keypress
             "break main",
             "continue",
         ]
