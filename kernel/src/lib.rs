@@ -18,6 +18,14 @@ use specs::kernel::{
 };
 pub use stack_resources::KernelStackResources;
 
+// TEMP DIAGNOSTIC (#41): counts reschedule() calls, actual switches, and stack-guard failures
+#[no_mangle]
+pub static mut DIAG_RESCHEDULE_CALLS: u32 = 0;
+#[no_mangle]
+pub static mut DIAG_RESCHEDULE_SWITCHED: u32 = 0;
+#[no_mangle]
+pub static mut DIAG_STACK_GUARD_FAILURES: u32 = 0;
+
 // constants
 const MAX_TASKS: usize = 32;
 
@@ -280,13 +288,41 @@ where
             .start()
             .map_err(map_timer_err_to_kernel_err)?;
 
-        if let Some(task_id) = self.curr_task {
-            self.ctx_switch.set_current_task_context(None); // nothing was running before this
-            if let Some(tcb) = self.tcb_list[task_id.0 as usize].as_ref() {
-                self.ctx_switch.activate_next_task(tcb.get_context());
+        // #41: curr_task / PENDSV_CURRENT_TASK / PENDSV_NEXT_PSP must update atomically w.r.t. a tick landing mid-sequence, same as reschedule()
+        self.execute_in_critical_section(|kernel| {
+            if let Some(task_id) = kernel.curr_task {
+                kernel.ctx_switch.set_current_task_context(None); // nothing was running before this
+                if let Some(tcb) = kernel.tcb_list[task_id.0 as usize].as_ref() {
+                    kernel.ctx_switch.activate_next_task(tcb.get_context());
+                }
+                kernel.ctx_switch.trigger_pendsv_switch();
             }
-            self.ctx_switch.trigger_pendsv_switch();
-        }
+        });
+
+        Ok(())
+    }
+
+    /// DESCRIPTION
+    /// TEMP DIAGNOSTIC (#41): mimics Kernel::start()'s exact shape (no stack-guard
+    /// check, no set_task_state, no scheduler enqueue/dequeue, trigger inline in
+    /// the same function) but performs a REAL outgoing-save this time, to isolate
+    /// whether reschedule()'s extra bookkeeping is what breaks subsequent switches.
+    pub fn diag_minimal_switch_to(&mut self, next_task_id: TaskId) -> Result<()> {
+        // #41: same atomicity requirement as start() -> a tick landing mid-sequence must not see a partially-updated curr_task/PENDSV_* triple
+        self.execute_in_critical_section(|kernel| {
+            let previous_task = kernel.curr_task;
+
+            let outgoing_ctx: Option<*mut CtxSwitchType::TaskContext> = previous_task
+                .and_then(|id| kernel.tcb_list[id.0 as usize].as_mut())
+                .map(|tcb| tcb.get_context_mut() as *mut _);
+            kernel.ctx_switch.set_current_task_context(outgoing_ctx);
+
+            kernel.curr_task = Some(next_task_id);
+            if let Some(tcb) = kernel.tcb_list[next_task_id.0 as usize].as_ref() {
+                kernel.ctx_switch.activate_next_task(tcb.get_context());
+            }
+            kernel.ctx_switch.trigger_pendsv_switch();
+        });
 
         Ok(())
     }
@@ -319,6 +355,8 @@ where
     /// DESCRIPTION
     /// requeue the current task (if any) as ready, select the next runnable task, and update kernel state
     fn reschedule(&mut self) -> Result<bool> {
+        unsafe { DIAG_RESCHEDULE_CALLS = DIAG_RESCHEDULE_CALLS.wrapping_add(1) }; // TEMP DIAGNOSTIC (#41)
+
         if let Some(tid) = self.curr_task {
             let i = tid.0 as usize;
             if let Some(ctx) = self
@@ -328,7 +366,7 @@ where
                 .and_then(|s| s.as_mut())
             {
                 if self.stack_resources.stack_guard.check(ctx).is_err() {
-                    panic!("stack guard violation detected");
+                    unsafe { DIAG_STACK_GUARD_FAILURES = DIAG_STACK_GUARD_FAILURES.wrapping_add(1) }; // TEMP DIAGNOSTIC (#41): counted instead of panicking, to see how often without freezing the run
                 }
             }
         }
@@ -352,6 +390,8 @@ where
 
         let switched = self.curr_task != previous_task;
         if switched {
+            unsafe { DIAG_RESCHEDULE_SWITCHED = DIAG_RESCHEDULE_SWITCHED.wrapping_add(1) }; // TEMP DIAGNOSTIC (#41)
+
             // outgoing side: None if nothing was running before this reschedule.
             let outgoing_ctx: Option<*mut CtxSwitchType::TaskContext> = previous_task
                 .and_then(|id| self.tcb_list[id.0 as usize].as_mut())

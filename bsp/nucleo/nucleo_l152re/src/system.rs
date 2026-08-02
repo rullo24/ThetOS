@@ -37,6 +37,24 @@ fn on_systick_tick() {
     }
 }
 
+/// TEMP DIAGNOSTIC (#41): lets a running task trigger a yield from Thread-mode code directly, bypassing SysTick entirely
+pub fn diag_yield_from_task() {
+    unsafe {
+        if let Some(system) = (*addr_of_mut!(SYSTEM)).as_mut() {
+            let _ = system.kernel.yield_now();
+        }
+    }
+}
+
+/// TEMP DIAGNOSTIC (#41): minimal, reschedule()-bypassing switch straight to a given task
+pub fn diag_minimal_switch_to(task_id: TaskId) {
+    unsafe {
+        if let Some(system) = (*addr_of_mut!(SYSTEM)).as_mut() {
+            let _ = system.kernel.diag_minimal_switch_to(task_id);
+        }
+    }
+}
+
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
     kernel: Kernel<

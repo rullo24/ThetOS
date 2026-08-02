@@ -17,11 +17,17 @@ static mut STACK_POOL: [u8; 4096] = [0; 4096];
 static mut COUNTER_A: u32 = 0;
 static mut COUNTER_B: u32 = 0;
 static mut COUNTER_C: u32 = 0;
+static mut DIAG_MANUAL_YIELD_DONE: bool = false; // TEMP DIAGNOSTIC (#41): ensures the manual yield only fires once
 
 extern "C" fn task_a(_arg: *mut ()) -> ! {
     loop {
         unsafe {
             COUNTER_A = COUNTER_A.wrapping_add(1);
+            // TEMP DIAGNOSTIC (#41): once, bypass reschedule() entirely -> minimal switch straight to task_b
+            if COUNTER_A == 20 && !DIAG_MANUAL_YIELD_DONE {
+                DIAG_MANUAL_YIELD_DONE = true;
+                nucleo_l152re::system::diag_minimal_switch_to(TaskId(2));
+            }
         }
     }
 }
