@@ -121,9 +121,7 @@ fn spawn_task_stacks_exactly_fill_the_pool_with_no_gaps_or_overflow() {
     let bounds = bounds.lock().unwrap();
     assert_eq!(bounds.len(), 4);
 
-    // contiguous, no gaps: first task starts exactly at the pool base, each next task's
-    // stack_limit picks up exactly where the previous task's stack_top left off, and the
-    // last task's stack_top lands exactly on the pool's end address -> not under, not over.
+    // contiguous, no gaps: pool base -> task1 -> task2 -> ... -> pool end, back to back
     assert_eq!(bounds[0].0, pool_base);
     for i in 1..bounds.len() {
         assert_eq!(bounds[i].0, bounds[i - 1].1, "gap or overlap between task {} and task {}", i, i + 1);
@@ -178,9 +176,7 @@ fn yield_now_triggers_ctx_switch() {
 
 #[test]
 fn yield_now_restarts_the_system_timer() {
-    // an early yield hands off before the current tick period has naturally
-    // elapsed -> the timer must be restarted so the next task gets a full
-    // fresh period instead of inheriting whatever was left of this one.
+    // an early yield must restart the timer, not inherit whatever was left of the current period
     let pool = unsafe { &mut *addr_of_mut!(POOL_YIELD_RESTART) };
     let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
     let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);

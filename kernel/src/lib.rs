@@ -373,15 +373,7 @@ where
     }
 
     /// DESCRIPTION
-    /// voluntarily give up the CPU before the next tick would naturally reschedule.
-    /// restarts the system timer's current period so the task this hands off to gets
-    /// a full fresh tick period, rather than being cut short by whatever was already
-    /// left of the period the yielding task interrupted. Runs inside a critical
-    /// section, same as on_tick_interrupt()'s reschedule() call -> yield_now() is
-    /// typically called from Thread-mode task code, so without this a tick landing
-    /// mid-call could let on_tick_interrupt()'s own reschedule() interleave with
-    /// this one and corrupt curr_task / the yield context (the exact class of bug
-    /// found and fixed in Kernel::start() during the #41 investigation).
+    /// voluntarily give up the CPU and restart the tick period, atomically (see #41's Kernel::start() race).
     pub fn yield_now(&mut self) -> Result<()> {
         self.execute_in_critical_section(|kernel| {
             kernel.reschedule()?;

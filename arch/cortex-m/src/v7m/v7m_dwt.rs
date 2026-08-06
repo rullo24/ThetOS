@@ -9,7 +9,6 @@ const DWT_CTRL_CYCCNTENA: u32 = 1 << 0; // enables the free-running cycle counte
 
 const DWT_CYCCNT: *mut u32 = 0xE000_1004 as *mut u32; // free-running cycle counter, wraps at u32::MAX
 
-/// DESCRIPTION
 /// enable the DWT cycle counter -> call once, early at boot
 pub unsafe fn init_cycle_counter() {
     write_volatile(DEMCR, read_volatile(DEMCR) | DEMCR_TRCENA);
@@ -17,7 +16,6 @@ pub unsafe fn init_cycle_counter() {
     write_volatile(DWT_CTRL, read_volatile(DWT_CTRL) | DWT_CTRL_CYCCNTENA);
 }
 
-/// DESCRIPTION
 /// read the current free-running cycle count
 pub unsafe fn read_cycle_counter() -> u32 {
     read_volatile(DWT_CYCCNT)
