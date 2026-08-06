@@ -1,4 +1,4 @@
-/// TEMP DIAGNOSTIC (#41): DWT cycle counter helpers -> used to measure how long reschedule() actually takes on real hardware, vs the SysTick tick budget.
+/// DWT cycle counter helpers -> lets callers time real hardware execution (e.g. checking a tick handler against its SysTick budget).
 use core::ptr::{read_volatile, write_volatile};
 
 const DEMCR: *mut u32 = 0xE000_EDFC as *mut u32; // Debug Exception and Monitor Control Register
@@ -10,7 +10,7 @@ const DWT_CTRL_CYCCNTENA: u32 = 1 << 0; // enables the free-running cycle counte
 const DWT_CYCCNT: *mut u32 = 0xE000_1004 as *mut u32; // free-running cycle counter, wraps at u32::MAX
 
 /// DESCRIPTION
-/// TEMP DIAGNOSTIC (#41): enable the DWT cycle counter -> call once, early at boot
+/// enable the DWT cycle counter -> call once, early at boot
 pub unsafe fn init_cycle_counter() {
     write_volatile(DEMCR, read_volatile(DEMCR) | DEMCR_TRCENA);
     write_volatile(DWT_CYCCNT, 0);
@@ -18,7 +18,7 @@ pub unsafe fn init_cycle_counter() {
 }
 
 /// DESCRIPTION
-/// TEMP DIAGNOSTIC (#41): read the current free-running cycle count
+/// read the current free-running cycle count
 pub unsafe fn read_cycle_counter() -> u32 {
     read_volatile(DWT_CYCCNT)
 }

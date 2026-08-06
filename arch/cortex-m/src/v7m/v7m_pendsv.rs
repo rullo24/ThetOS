@@ -30,10 +30,6 @@ static mut PENDSV_NEXT_PSP: u32 = 0; // global -> used in asm code (label must b
 #[no_mangle]
 static mut PENDSV_CURRENT_TASK: *mut super::V7mTaskContext = core::ptr::null_mut();
 
-/// TEMP DIAGNOSTIC (#41): counts how many times the CPU actually takes PendSV, incremented by the handler itself
-#[no_mangle]
-pub static mut PENDSV_ENTRY_COUNT: u32 = 0;
-
 /// DESCRIPTION
 /// set the PSP value the PendSV handler will restore -> must match `V7mTaskContext.sp`
 pub unsafe fn set_next_task_psp(psp: *mut u8) {
@@ -53,12 +49,6 @@ global_asm!(
     ".global PendSV_Handler", // can be referenced from other files
     ".type PendSV_Handler, %function", // function type -> used by linker to place in correct section
     "PendSV_Handler:", // start of PendSV_Handler label (func)
-
-    // TEMP DIAGNOSTIC (#41): count every actual entry, r0/r1 safe to clobber here (overwritten below regardless)
-    "ldr r0, ={entry_count}",
-    "ldr r1, [r0]",
-    "adds r1, r1, #1",
-    "str r1, [r0]",
 
     // 1) Which stack did Thread mode use? (CONTROL.SPSEL) -> where the HW stacked the 8-word frame.
     "tst lr, {exc_return_stack}", // Z=1 if frame on MSP (e.g. 0xFFFFFFF9); Z=0 if on PSP (e.g. 0xFFFFFFFD)
@@ -103,5 +93,4 @@ global_asm!(
     current_task = sym PENDSV_CURRENT_TASK,
     next_psp = sym PENDSV_NEXT_PSP,
     exc_return_psp = const EXC_RETURN_PSP_THREAD_MODE,
-    entry_count = sym PENDSV_ENTRY_COUNT,
 );
