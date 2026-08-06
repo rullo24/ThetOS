@@ -14,9 +14,7 @@ use specs::kernel::{Result, SystemTimer, TaskPriority};
 
 // RM0038 rev 18 s6.2.3 "MSI clock" pg 132: SYSCLK default post-reset = MSI @ 2,097,152 Hz
 const SYSCLK_HZ: u32 = 2_097_152;
-
-// standard 1kHz system tick; future delay_ms() counts ticks for visible timing
-const SYSTICK_PERIOD_MS: u32 = 1;
+const SYSTICK_PERIOD_MS: u32 = 10;
 
 // reload = SYSCLK_HZ*period_ms/1000 - 1 (ARM N-1 formula); ~999.928us actual, negligible vs MSI's ~1% tolerance
 const SYSTICK_RELOAD_TICKS: u32 = (SYSCLK_HZ * SYSTICK_PERIOD_MS) / 1000 - 1;
