@@ -18,8 +18,7 @@ static mut COUNTER_HIGH: u32 = 0;
 static mut COUNTER_MID: u32 = 0;
 static mut COUNTER_LOW: u32 = 0;
 
-// priority 0 (highest) -> wins every reschedule while ready, but delays after each turn so
-// lower-priority tasks get a real window instead of being starved outright.
+// priority 0 (highest) -> wins every reschedule while ready, but delays after each turn so lower-priority tasks get a real window instead of being starved outright.
 extern "C" fn task_high(_arg: *mut ()) -> ! {
     loop {
         unsafe {
@@ -29,8 +28,7 @@ extern "C" fn task_high(_arg: *mut ()) -> ! {
     }
 }
 
-// priority 15 (middle) -> beats task_low whenever both are ready, but also delays, opening a
-// window where task_low (which never delays) finally gets picked.
+// priority 15 (middle) -> beats task_low whenever both are ready, but also delays, opening a window where task_low (which never delays) finally gets picked.
 extern "C" fn task_mid(_arg: *mut ()) -> ! {
     loop {
         unsafe {
@@ -40,8 +38,7 @@ extern "C" fn task_mid(_arg: *mut ()) -> ! {
     }
 }
 
-// priority 31 (lowest) -> never delays, so it only ever runs in the windows where neither
-// task_high nor task_mid is ready (i.e. both are currently blocked in delay_ms).
+// priority 31 (lowest) -> never delays, so it only ever runs in the windows where neither task_high nor task_mid is ready (i.e. both are currently blocked in delay_ms).
 extern "C" fn task_low(_arg: *mut ()) -> ! {
     loop {
         unsafe {
@@ -56,13 +53,31 @@ fn app_main() -> ! {
     let mut system = System::new_with_pool(p_stack_pool);
 
     system
-        .spawn_task(TaskId(1), TaskPriority::new(0).unwrap(), 1024, task_high, null_mut())
+        .spawn_task(
+            TaskId(1),
+            TaskPriority::new(0).unwrap(),
+            1024,
+            task_high,
+            null_mut(),
+        )
         .unwrap();
     system
-        .spawn_task(TaskId(2), TaskPriority::new(15).unwrap(), 1024, task_mid, null_mut())
+        .spawn_task(
+            TaskId(2),
+            TaskPriority::new(15).unwrap(),
+            1024,
+            task_mid,
+            null_mut(),
+        )
         .unwrap();
     system
-        .spawn_task(TaskId(3), TaskPriority::new(31).unwrap(), 1024, task_low, null_mut())
+        .spawn_task(
+            TaskId(3),
+            TaskPriority::new(31).unwrap(),
+            1024,
+            task_low,
+            null_mut(),
+        )
         .unwrap();
 
     // run RTOS loop -> installs tick source and starts SysTick internally

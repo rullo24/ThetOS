@@ -20,6 +20,7 @@ pub use stack_resources::KernelStackResources;
 
 // constants
 const MAX_TASKS: usize = 32;
+const IDLE_TASK_ID: TaskId = TaskId(0); // reserved -> spawn_idle_task() only, never a regular spawn_task() caller
 
 // must cover at least the initial task frame (hw + callee) and any padding
 const MIN_TASK_STACK_SIZE_BYTES: usize = 512; // arbitrary min size to cover all targets
@@ -152,12 +153,6 @@ where
         entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
     ) -> Result<()> {
-        // use stack_resources for the pool -> checking available slots for new task
-        let idx: usize = task_id.0 as usize;
-        if idx >= self.stack_resources.stack_guard_slots.len() {
-            return Err(KernelError::InvalidConfig);
-        }
-
         // read arch-specific stack alignment -> reject if zero (invalid)
         let align = CtxSwitchType::STACK_ALIGNMENT_BYTES;
         if align == 0 {
@@ -179,13 +174,58 @@ where
             return Err(KernelError::InvalidConfig);
         }
 
-        // capture limit + top from stack pool and advance cursor for next spawn
+        // capture limit + top from stack pool
         let stack_limit = self
             .stack_resources
             .stack_pool
             .as_mut_ptr()
             .wrapping_add(cursor_aligned);
         let stack_top = stack_limit.wrapping_add(aligned_size);
+
+        self.spawn_task_with_stack(task_id, priority, stack_top, stack_limit, entry_point, entry_arg)?;
+
+        // advance cursor for next spawn -> only once the spawn above actually succeeded
+        self.stack_cursor = cursor_aligned + aligned_size;
+        Ok(())
+    }
+
+    /// DESCRIPTION
+    /// spawn the kernel's fixed idle task on its own, caller-supplied stack (not the shared
+    /// pool) -> lowest priority, never blocks, always re-enqueued when preempted, so
+    /// block_current_task_until() always has somewhere to switch to
+    pub fn spawn_idle_task(
+        &mut self,
+        entry_point: extern "C" fn(*mut ()) -> !,
+        entry_arg: *mut (),
+        stack_top: *mut u8,
+        stack_limit: *mut u8,
+    ) -> Result<()> {
+        self.spawn_task_with_stack(
+            IDLE_TASK_ID,
+            TaskPriority::new(TaskPriority::MAX)?,
+            stack_top,
+            stack_limit,
+            entry_point,
+            entry_arg,
+        )
+    }
+
+    /// DESCRIPTION
+    /// build and register a task from an already-carved-out stack region -> shared by spawn_task
+    /// (which carves the region from the shared pool) and spawn_idle_task (caller-supplied region)
+    fn spawn_task_with_stack(
+        &mut self,
+        task_id: TaskId,
+        priority: TaskPriority,
+        stack_top: *mut u8,
+        stack_limit: *mut u8,
+        entry_point: extern "C" fn(*mut ()) -> !,
+        entry_arg: *mut (),
+    ) -> Result<()> {
+        let idx: usize = task_id.0 as usize;
+        if idx >= self.stack_resources.stack_guard_slots.len() {
+            return Err(KernelError::InvalidConfig);
+        }
 
         // initialise task context for the new task
         let task_context = self
@@ -241,9 +281,6 @@ where
             task_priority: priority,
             wake_at_tick: None,
         });
-
-        // advance cursor for next spawn
-        self.stack_cursor = cursor_aligned + aligned_size;
 
         if preempt_current {
             // demote the previously running task (if any) back to Ready and
@@ -332,9 +369,10 @@ where
     fn wake_expired_tasks(&mut self, now: u64) -> Result<()> {
         for idx in 0..MAX_TASKS {
             let expired = match self.tcb_list[idx].as_ref() {
-                Some(tcb) if tcb.task_state == TaskState::Blocked => {
-                    tcb.wake_at_tick.filter(|&wake_at| now >= wake_at).map(|_| (tcb.task_id, tcb.task_priority))
-                }
+                Some(tcb) if tcb.task_state == TaskState::Blocked => tcb
+                    .wake_at_tick
+                    .filter(|&wake_at| now >= wake_at)
+                    .map(|_| (tcb.task_id, tcb.task_priority)),
                 _ => None,
             };
 
@@ -367,8 +405,9 @@ where
             kernel.set_task_state(next_task_id, TaskState::Running)?;
             kernel.curr_task = Some(next_task_id);
 
-            let outgoing_ctx: Option<*mut CtxSwitchType::TaskContext> =
-                kernel.tcb_list[idx].as_mut().map(|tcb| tcb.get_context_mut() as *mut _);
+            let outgoing_ctx: Option<*mut CtxSwitchType::TaskContext> = kernel.tcb_list[idx]
+                .as_mut()
+                .map(|tcb| tcb.get_context_mut() as *mut _);
             kernel.ctx_switch.set_current_task_context(outgoing_ctx);
 
             if let Some(tcb) = kernel.tcb_list[next_task_id.0 as usize].as_ref() {
@@ -463,7 +502,9 @@ where
     /// DESCRIPTION
     /// current tick count -> lets callers compute a wake_at_tick deadline for block_current_task_until
     pub fn current_tick(&self) -> Result<u64> {
-        self.system_timer.current_tick().map_err(map_timer_err_to_kernel_err)
+        self.system_timer
+            .current_tick()
+            .map_err(map_timer_err_to_kernel_err)
     }
 
     /// DESCRIPTION
