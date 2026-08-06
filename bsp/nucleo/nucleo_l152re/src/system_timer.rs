@@ -40,6 +40,12 @@ impl SystemTimer for NucleoSystemTimer {
     }
 
     /// DESCRIPTION
+    /// restart the current SysTick period from the top, keeping the configured reload value
+    fn restart(&mut self) -> Result<(), Self::Error> {
+        self.systick.reset_counter()
+    }
+
+    /// DESCRIPTION
     /// clear the pending SysTick exception request
     fn acknowledge_tick_interrupt(&mut self) -> Result<(), Self::Error> {
         self.systick.clear_pending()

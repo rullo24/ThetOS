@@ -18,6 +18,7 @@ pub static mut POOL_SPAWN_OK: [u8; 1024] = [0; 1024];
 pub static mut POOL_SPAWN_REJECT: [u8; 1024] = [0; 1024];
 pub static mut POOL_CRIT: [u8; 1024] = [0; 1024];
 pub static mut POOL_YIELD: [u8; 1024] = [0; 1024];
+pub static mut POOL_YIELD_RESTART: [u8; 1024] = [0; 1024];
 pub static mut POOL_TICK_SWITCH: [u8; 4096] = [0; 4096];
 pub static mut POOL_TICK_NO_ACTION: [u8; 4096] = [0; 4096];
 pub static mut POOL_TICK_SINGLE_TASK: [u8; 1024] = [0; 1024];
@@ -189,6 +190,7 @@ pub fn test_resources(pool: &'static mut [u8]) -> KernelStackResources<MockStack
 pub struct MockSystemTimer {
     pub next_action: TickAction,
     pub ack_count: Arc<AtomicU32>,
+    pub restart_count: Arc<AtomicU32>,
 }
 
 impl MockSystemTimer {
@@ -198,7 +200,11 @@ impl MockSystemTimer {
     pub fn new(next_action: TickAction) -> (Self, Arc<AtomicU32>) {
         let ack_count = Arc::new(AtomicU32::new(0));
         (
-            Self { next_action, ack_count: ack_count.clone() },
+            Self {
+                next_action,
+                ack_count: ack_count.clone(),
+                restart_count: Arc::new(AtomicU32::new(0)),
+            },
             ack_count,
         )
     }
@@ -216,6 +222,11 @@ impl SystemTimer for MockSystemTimer {
     }
 
     fn stop(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn restart(&mut self) -> Result<(), Self::Error> {
+        self.restart_count.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
 

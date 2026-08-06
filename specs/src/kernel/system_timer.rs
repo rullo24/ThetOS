@@ -25,6 +25,12 @@ pub trait SystemTimer {
     fn stop(&mut self) -> Result<(), Self::Error>;
 
     /// DESCRIPTION
+    /// restart the current tick period from the top, without changing its configured cadence ->
+    /// used when a task yields early, so the task it hands off to gets a full fresh period
+    /// instead of being cut short by a tick that was already partway elapsed
+    fn restart(&mut self) -> Result<(), Self::Error>;
+
+    /// DESCRIPTION
     /// clear pending interrupt state after tick
     fn acknowledge_tick_interrupt(&mut self) -> Result<(), Self::Error>;
 

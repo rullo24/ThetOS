@@ -14,7 +14,7 @@ use support::{
     POOL_SPAWN_PREEMPT, POOL_SPAWN_PREEMPT_CONTEXT, POOL_SPAWN_PREEMPT_REQUEUE_FULL,
     POOL_SPAWN_REJECT, POOL_TICK_ACK_ON_ERROR, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS,
     POOL_TICK_SINGLE_TASK, POOL_TICK_SWITCH, POOL_TICK_SWITCH_CONTEXT, POOL_YIELD,
-    POOL_YIELD_SAME_PRIORITY,
+    POOL_YIELD_RESTART, POOL_YIELD_SAME_PRIORITY,
 };
 
 use crate::support::MockSystemTimer;
@@ -174,6 +174,27 @@ fn yield_now_triggers_ctx_switch() {
 
     kernel.yield_now().unwrap();
     assert_eq!(trigger_count.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn yield_now_restarts_the_system_timer() {
+    // an early yield hands off before the current tick period has naturally
+    // elapsed -> the timer must be restarted so the next task gets a full
+    // fresh period instead of inheriting whatever was left of this one.
+    let pool = unsafe { &mut *addr_of_mut!(POOL_YIELD_RESTART) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
+    let restart_count = mock_timer.restart_count.clone();
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        MockScheduler,
+        test_resources(pool),
+        mock_timer,
+    );
+
+    kernel.yield_now().unwrap();
+    assert_eq!(restart_count.load(Ordering::SeqCst), 1);
 }
 
 #[test]

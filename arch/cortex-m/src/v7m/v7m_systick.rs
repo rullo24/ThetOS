@@ -72,6 +72,15 @@ impl SystemTicker for V7mSysTick {
     }
 
     /// DESCRIPTION
+    /// restart the countdown from the top -> reload value is untouched, only CVR is cleared
+    fn reset_counter(&mut self) -> Result<(), Self::Error> {
+        unsafe {
+            write_volatile(SYST_CVR, 0); // any write clears CVR + COUNTFLAG -> next tick reloads from SYST_RVR
+        }
+        Ok(())
+    }
+
+    /// DESCRIPTION
     /// return the software-extended tick count maintained by the ISR
     fn current_tick(&self) -> Result<u64, Self::Error> {
         Ok(unsafe { read_volatile(core::ptr::addr_of!(SYSTICK_TICK_COUNT)) })
