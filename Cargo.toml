@@ -28,6 +28,7 @@ members = [
     "phase_testing/phase3/multi_task_auto",
     "phase_testing/phase3/priority_delay_demo",
     "phase_testing/phase3/all_tasks_delay_demo",
+    "phase_testing/phase3/five_task_priority_demo",
 ]
 
 [workspace.dependencies]
