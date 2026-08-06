@@ -13,11 +13,10 @@ fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
 
-static mut STACK_POOL: [u8; 4096] = [0; 4096];
+static mut STACK_POOL: [u8; 3072] = [0; 3072];
 static mut COUNTER_A: u32 = 0;
 static mut COUNTER_B: u32 = 0;
 static mut COUNTER_C: u32 = 0;
-static mut COUNTER_D: u32 = 0;
 
 extern "C" fn task_a(_arg: *mut ()) -> ! {
     loop {
@@ -43,20 +42,12 @@ extern "C" fn task_c(_arg: *mut ()) -> ! {
     }
 }
 
-extern "C" fn task_d(_arg: *mut ()) -> ! {
-    loop {
-        unsafe {
-            COUNTER_D = COUNTER_D.wrapping_add(1);
-        }
-    }
-}
-
 #[entry]
 fn app_main() -> ! {
     let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
     let mut system = System::new_with_pool(p_stack_pool);
 
-    // spawn 3x tasks for scheduling
+    // spawn 3x same-priority tasks -> demonstrates plain round-robin scheduling
     system
         .spawn_task(TaskId(1), TaskPriority::default(), 1024, task_a, null_mut())
         .unwrap();
@@ -65,9 +56,6 @@ fn app_main() -> ! {
         .unwrap();
     system
         .spawn_task(TaskId(3), TaskPriority::default(), 1024, task_c, null_mut())
-        .unwrap();
-    system
-        .spawn_task(TaskId(4), TaskPriority::default(), 1024, task_d, null_mut())
         .unwrap();
 
     // run RTOS loop -> installs tick source and starts SysTick internally
