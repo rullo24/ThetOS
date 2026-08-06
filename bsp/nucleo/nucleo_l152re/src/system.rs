@@ -68,6 +68,22 @@ pub fn current_tick() -> Result<u64> {
     }
 }
 
+/// DESCRIPTION
+/// convert a millisecond duration to whole ticks, rounded up so the delay is never shorter than requested
+fn ms_to_ticks(ms: u32) -> u64 {
+    ((ms + SYSTICK_PERIOD_MS - 1) / SYSTICK_PERIOD_MS) as u64
+}
+
+/// DESCRIPTION
+/// delay the calling task by at least `ms` milliseconds -> callable from task code.
+pub fn delay_ms(ms: u32) -> Result<()> {
+    let ticks = ms_to_ticks(ms);
+    if ticks == 0 {
+        return Ok(());
+    }
+    block_current_task_until(current_tick()? + ticks)
+}
+
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
     kernel: Kernel<
@@ -145,6 +161,16 @@ impl System {
     /// current tick count -> use to compute a wake_at_tick deadline.
     pub fn current_tick(&self) -> Result<u64> {
         self.kernel.current_tick()
+    }
+
+    /// DESCRIPTION
+    /// delay the calling task by at least `ms` milliseconds.
+    pub fn delay_ms(&mut self, ms: u32) -> Result<()> {
+        let ticks = ms_to_ticks(ms);
+        if ticks == 0 {
+            return Ok(());
+        }
+        self.block_current_task_until(self.current_tick()? + ticks)
     }
 
     /// DESCRIPTION
