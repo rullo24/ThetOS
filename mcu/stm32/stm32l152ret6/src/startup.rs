@@ -36,6 +36,7 @@ pub extern "C" fn Default_Handler() -> ! {
 pub extern "C" fn Reset() -> ! {
     unsafe {
         write_volatile(SCB_VTOR, FLASH_ORIGIN); // boot-time remap can alias 0x0 away from flash, so point VTOR at flash explicitly or exception vectors fetch the wrong table
+        crate::clock::set_msi_max_range(); // raise MSI from its 2.097 MHz default to the fastest available range (4.194 MHz), before anything else times off it
         copy_data(); // copy data from FLASH to RAM
         zero_bss(); // zero bss section in RAM
         main(); // hand over to user execution code

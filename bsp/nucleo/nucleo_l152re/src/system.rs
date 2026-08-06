@@ -12,8 +12,9 @@ use specs::arch::StackGuardContext;
 use specs::common::TaskId;
 use specs::kernel::{Result, SystemTimer, TaskPriority};
 
-// RM0038 rev 18 s6.2.3 "MSI clock" pg 132: SYSCLK default post-reset = MSI @ 2,097,152 Hz
-const SYSCLK_HZ: u32 = 2_097_152;
+// RM0038 rev 18 s6.2.3 "MSI clock" pg 132: MSI raised to its fastest range (range 6) at boot
+// by stm32l152ret6::clock::set_msi_max_range() -> SYSCLK = 4,194,304 Hz, not the 2,097,152 Hz default
+const SYSCLK_HZ: u32 = 4_194_304;
 
 // 100Hz -> a debug (unoptimized) build's on_tick_interrupt() measured ~7200 cycles, ~3.4x a 1ms budget on this MCU;
 // 10ms gives comfortable headroom without needing a release build. See TICK_CYCLES_MAX below to re-check on this hardware.
