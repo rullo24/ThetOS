@@ -32,6 +32,7 @@ pub static mut POOL_SPAWN_FIRST_TASK_CONTEXT: [u8; 1024] = [0; 1024];
 pub static mut POOL_SPAWN_PREEMPT_CONTEXT: [u8; 4096] = [0; 4096];
 pub static mut POOL_TICK_SWITCH_CONTEXT: [u8; 4096] = [0; 4096];
 pub static mut POOL_KERNEL_START_NO_TASK: [u8; 1024] = [0; 1024];
+pub static mut POOL_SPAWN_EXACT_FIT: [u8; 4096] = [0; 4096];
 
 const TEST_MAX_TASKS: usize = 32;
 static mut MOCK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; TEST_MAX_TASKS] =
@@ -73,6 +74,7 @@ pub struct MockContextSwitch {
     pub trigger_count: Arc<AtomicU32>,
     pub activated_contexts: Arc<Mutex<Vec<usize>>>,
     pub outgoing_contexts: Arc<Mutex<Vec<Option<usize>>>>,
+    pub initialised_bounds: Arc<Mutex<Vec<(usize, usize)>>>, // (stack_limit, stack_top) per initialise_task_context call, in call order
 }
 
 impl MockContextSwitch {
@@ -87,6 +89,7 @@ impl MockContextSwitch {
                 trigger_count: trigger_count.clone(),
                 activated_contexts: Arc::new(Mutex::new(Vec::new())),
                 outgoing_contexts: Arc::new(Mutex::new(Vec::new())),
+                initialised_bounds: Arc::new(Mutex::new(Vec::new())),
             },
             trigger_count,
         )
@@ -100,10 +103,14 @@ impl ContextSwitch for MockContextSwitch {
     fn initialise_task_context(
         &self,
         stack_top: *mut u8,
-        _stack_limit: *mut u8,
+        stack_limit: *mut u8,
         _entry_point: extern "C" fn(*mut ()) -> !,
         _entry_arg: *mut (),
     ) -> Result<Self::TaskContext, ContextSwitchError> {
+        self.initialised_bounds
+            .lock()
+            .unwrap()
+            .push((stack_limit as usize, stack_top as usize));
         Ok(stack_top as usize)
     }
 

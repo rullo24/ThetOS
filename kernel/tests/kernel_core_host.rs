@@ -10,10 +10,11 @@ mod support;
 use support::{
     dummy_entry, test_resources, MockContextSwitch, MockCriticalSection, MockScheduler,
     POOL_CRIT, POOL_KERNEL_INIT, POOL_KERNEL_START_NO_TASK, POOL_QUEUE_FULL,
-    POOL_SPAWN_FIRST_TASK_CONTEXT, POOL_SPAWN_NO_PREEMPT, POOL_SPAWN_OK, POOL_SPAWN_PREEMPT,
-    POOL_SPAWN_PREEMPT_CONTEXT, POOL_SPAWN_PREEMPT_REQUEUE_FULL, POOL_SPAWN_REJECT,
-    POOL_TICK_ACK_ON_ERROR, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS, POOL_TICK_SINGLE_TASK,
-    POOL_TICK_SWITCH, POOL_TICK_SWITCH_CONTEXT, POOL_YIELD, POOL_YIELD_SAME_PRIORITY,
+    POOL_SPAWN_EXACT_FIT, POOL_SPAWN_FIRST_TASK_CONTEXT, POOL_SPAWN_NO_PREEMPT, POOL_SPAWN_OK,
+    POOL_SPAWN_PREEMPT, POOL_SPAWN_PREEMPT_CONTEXT, POOL_SPAWN_PREEMPT_REQUEUE_FULL,
+    POOL_SPAWN_REJECT, POOL_TICK_ACK_ON_ERROR, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS,
+    POOL_TICK_SINGLE_TASK, POOL_TICK_SWITCH, POOL_TICK_SWITCH_CONTEXT, POOL_YIELD,
+    POOL_YIELD_SAME_PRIORITY,
 };
 
 use crate::support::MockSystemTimer;
@@ -85,6 +86,60 @@ fn spawn_task_rejects_null_stack_top() {
     assert_eq!(result, Err(KernelError::InvalidConfig));
     assert_eq!(kernel.get_task_count(), 0);
     assert_eq!(kernel.get_current_task(), None);
+}
+
+#[test]
+fn spawn_task_stacks_exactly_fill_the_pool_with_no_gaps_or_overflow() {
+    let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_EXACT_FIT) };
+    let pool_base = pool.as_ptr() as usize;
+    let pool_end = pool_base + pool.len();
+
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let bounds = mock_ctx_switch.initialised_bounds.clone();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        MockScheduler,
+        test_resources(pool),
+        mock_timer,
+    );
+
+    // 4 tasks x 1024 bytes == the pool's exact size -> must fit with zero slack
+    for id in 1..=4 {
+        let result = kernel.spawn_task(
+            TaskId(id),
+            TaskPriority::new(1).unwrap(),
+            1024,
+            dummy_entry,
+            null_mut(),
+        );
+        assert!(result.is_ok(), "task {id} failed to spawn within an exactly-sized pool");
+    }
+    assert_eq!(kernel.get_task_count(), 4);
+
+    let bounds = bounds.lock().unwrap();
+    assert_eq!(bounds.len(), 4);
+
+    // contiguous, no gaps: first task starts exactly at the pool base, each next task's
+    // stack_limit picks up exactly where the previous task's stack_top left off, and the
+    // last task's stack_top lands exactly on the pool's end address -> not under, not over.
+    assert_eq!(bounds[0].0, pool_base);
+    for i in 1..bounds.len() {
+        assert_eq!(bounds[i].0, bounds[i - 1].1, "gap or overlap between task {} and task {}", i, i + 1);
+    }
+    assert_eq!(bounds[bounds.len() - 1].1, pool_end);
+
+    // one byte over the exact-fit boundary must be rejected, not silently overflowed
+    let overflow_result = kernel.spawn_task(
+        TaskId(5),
+        TaskPriority::new(1).unwrap(),
+        512, // arch alignment rounds this up, but the pool has 0 bytes left regardless
+        dummy_entry,
+        null_mut(),
+    );
+    assert_eq!(overflow_result, Err(KernelError::InvalidConfig));
+    assert_eq!(kernel.get_task_count(), 4);
 }
 
 #[test]
