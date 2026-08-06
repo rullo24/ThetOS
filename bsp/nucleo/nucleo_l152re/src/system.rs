@@ -14,7 +14,7 @@ use specs::kernel::{Result, SystemTimer, TaskPriority};
 
 // RM0038 rev 18 s6.2.3 "MSI clock" pg 132: SYSCLK default post-reset = MSI @ 2,097,152 Hz
 const SYSCLK_HZ: u32 = 2_097_152;
-const SYSTICK_PERIOD_MS: u32 = 10;
+const SYSTICK_PERIOD_MS: u32 = 1; // TEMP DIAGNOSTIC (#41): isolation test -> back to 1ms with the critical-section fix still in place, to see if the fix alone is sufficient
 
 // reload = SYSCLK_HZ*period_ms/1000 - 1 (ARM N-1 formula); ~999.928us actual, negligible vs MSI's ~1% tolerance
 const SYSTICK_RELOAD_TICKS: u32 = (SYSCLK_HZ * SYSTICK_PERIOD_MS) / 1000 - 1;
@@ -25,12 +25,24 @@ static mut TASK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; MAX_TASKS] = [Non
 /// single running System instance -> reachable from the tick callback
 static mut SYSTEM: Option<System> = None;
 
+// TEMP DIAGNOSTIC (#41): measures how many CPU cycles on_tick_interrupt() (incl. reschedule()) actually takes, vs the SysTick tick budget
+#[no_mangle]
+pub static mut DIAG_TICK_CYCLES_LAST: u32 = 0;
+#[no_mangle]
+pub static mut DIAG_TICK_CYCLES_MAX: u32 = 0;
+
 /// DESCRIPTION
 /// tick callback registered with arch -> forwards the tick into the running System's kernel
 fn on_systick_tick() {
     unsafe {
         if let Some(system) = (*addr_of_mut!(SYSTEM)).as_mut() {
+            let start = cortex_m::v7m::read_cycle_counter(); // TEMP DIAGNOSTIC (#41)
             let _ = system.kernel.on_tick_interrupt();
+            let elapsed = cortex_m::v7m::read_cycle_counter().wrapping_sub(start); // TEMP DIAGNOSTIC (#41)
+            DIAG_TICK_CYCLES_LAST = elapsed;
+            if elapsed > DIAG_TICK_CYCLES_MAX {
+                DIAG_TICK_CYCLES_MAX = elapsed;
+            }
         }
     }
 }
@@ -71,6 +83,7 @@ impl System {
         // PendSV/SysTick set to same lowest priority before the timer starts (standard Cortex-M RTOS convention)
         unsafe {
             configure_kernel_interrupt_priorities();
+            cortex_m::v7m::init_cycle_counter(); // TEMP DIAGNOSTIC (#41)
         }
 
         let mut system_timer = NucleoSystemTimer::new();

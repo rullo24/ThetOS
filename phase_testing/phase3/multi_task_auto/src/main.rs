@@ -2,7 +2,7 @@
 #![no_main]
 
 use core::panic::PanicInfo;
-use core::ptr::{addr_of_mut, null_mut};
+use core::ptr::{addr_of_mut, null_mut, read_volatile, write_volatile};
 use entry::entry;
 use nucleo_l152re::System;
 use specs::common::TaskId;
@@ -14,14 +14,17 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 static mut STACK_POOL: [u8; 4096] = [0; 4096];
-static mut COUNTER_A: u32 = 0;
-static mut COUNTER_B: u32 = 0;
-static mut COUNTER_C: u32 = 0;
+#[no_mangle]
+pub static mut COUNTER_A: u32 = 0;
+#[no_mangle]
+pub static mut COUNTER_B: u32 = 0;
+#[no_mangle]
+pub static mut COUNTER_C: u32 = 0;
 
 extern "C" fn task_a(_arg: *mut ()) -> ! {
     loop {
         unsafe {
-            COUNTER_A = COUNTER_A.wrapping_add(1);
+            write_volatile(addr_of_mut!(COUNTER_A), read_volatile(addr_of_mut!(COUNTER_A)).wrapping_add(1));
         }
     }
 }
@@ -29,7 +32,7 @@ extern "C" fn task_a(_arg: *mut ()) -> ! {
 extern "C" fn task_b(_arg: *mut ()) -> ! {
     loop {
         unsafe {
-            COUNTER_B = COUNTER_B.wrapping_add(1);
+            write_volatile(addr_of_mut!(COUNTER_B), read_volatile(addr_of_mut!(COUNTER_B)).wrapping_add(1));
         }
     }
 }
@@ -37,7 +40,7 @@ extern "C" fn task_b(_arg: *mut ()) -> ! {
 extern "C" fn task_c(_arg: *mut ()) -> ! {
     loop {
         unsafe {
-            COUNTER_C = COUNTER_C.wrapping_add(1);
+            write_volatile(addr_of_mut!(COUNTER_C), read_volatile(addr_of_mut!(COUNTER_C)).wrapping_add(1));
         }
     }
 }
