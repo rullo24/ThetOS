@@ -42,7 +42,7 @@ extern "C" fn task_a(_arg: *mut ()) -> ! {
             let p_task_b = addr_of_mut!(CTX_B).cast::<V7mTaskContext>();
             set_next_task_psp((*p_task_b).sp);
             set_current_task_tcb(p_task_a);
-            ctx_switch.trigger_pendsv_switch();
+            ctx_switch.trigger_yield();
         }
     }
 }
@@ -60,7 +60,7 @@ extern "C" fn task_b(_arg: *mut ()) -> ! {
             let p_task_b = addr_of_mut!(CTX_B).cast::<V7mTaskContext>();
             set_next_task_psp((*p_task_a).sp);
             set_current_task_tcb(p_task_b);
-            ctx_switch.trigger_pendsv_switch();
+            ctx_switch.trigger_yield();
         }
     }
 }
@@ -100,7 +100,7 @@ fn app_main() -> ! {
     }
 
     // trigger first context switch to task A (MSP -> PSP)
-    ctx_switch.trigger_pendsv_switch();
+    ctx_switch.trigger_yield();
 
     loop {
         core::hint::spin_loop();

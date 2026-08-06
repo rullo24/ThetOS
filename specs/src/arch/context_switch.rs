@@ -13,11 +13,12 @@ pub trait ContextSwitch {
         entry_arg: *mut (),
     ) -> Result<Self::TaskContext, ContextSwitchError>;
 
-    fn trigger_pendsv_switch(&self);
+    /// request a context-switch yield -> typically implemented via PendSV on Cortex-M
+    fn trigger_yield(&self);
 
-    /// point the next PendSV restore at this task's context
+    /// point the next yield's restore at this task's context (PendSV's restore side, on Cortex-M)
     fn activate_next_task(&self, ctx: &Self::TaskContext);
 
-    /// point PendSV's save side at the outgoing task's context slot (None if nothing was running)
+    /// point the yield's save side at the outgoing task's context slot (None if nothing was running; PendSV's save side, on Cortex-M)
     fn set_current_task_context(&self, ctx: Option<*mut Self::TaskContext>);
 }

@@ -472,7 +472,7 @@ fn spawn_task_preemption_actually_requeues_previous_task() {
 }
 
 #[test]
-fn spawn_task_never_touches_pendsv_context_even_on_preemption() {
+fn spawn_task_never_touches_yield_context_even_on_preemption() {
     let pool = unsafe { &mut *addr_of_mut!(POOL_SPAWN_PREEMPT_CONTEXT) };
     let (mock_ctx_switch, trigger_count) = MockContextSwitch::new();
     let activated_contexts = mock_ctx_switch.activated_contexts.clone();
@@ -494,7 +494,7 @@ fn spawn_task_never_touches_pendsv_context_even_on_preemption() {
         .unwrap();
 
     // spawn_task is pure bookkeeping -> curr_task updates via preemption,
-    // but neither the PendSV context hooks nor the trigger are ever touched.
+    // but neither the yield context hooks nor the trigger are ever touched.
     assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
     assert_eq!(activated_contexts.lock().unwrap().len(), 0);
     assert_eq!(outgoing_contexts.lock().unwrap().len(), 0);

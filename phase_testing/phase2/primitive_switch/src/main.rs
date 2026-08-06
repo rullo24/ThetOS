@@ -62,7 +62,7 @@ fn app_main() -> ! {
     }
 
     // trigger context switch to change task
-    ctx_switch.trigger_pendsv_switch(); 
+    ctx_switch.trigger_yield(); 
 
     loop {
         core::hint::spin_loop();

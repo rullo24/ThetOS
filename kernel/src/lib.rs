@@ -261,7 +261,7 @@ where
         }
         self.task_count += 1;
 
-        // spawn_task is bookkeeping only -> it never touches PendSV or the
+        // spawn_task is bookkeeping only -> it never triggers a yield or the
         // hardware switch, even when it decides this task preempts the
         // current one. The switch happens at the next reschedule (tick or
         // yield), or -> for the very first task -> via Kernel::start().
@@ -280,14 +280,14 @@ where
             .start()
             .map_err(map_timer_err_to_kernel_err)?;
 
-        // curr_task / PENDSV_CURRENT_TASK / PENDSV_NEXT_PSP must update atomically w.r.t. a tick landing mid-sequence, same as reschedule()
+        // curr_task and the outgoing/incoming yield context must update atomically w.r.t. a tick landing mid-sequence, same as reschedule()
         self.execute_in_critical_section(|kernel| {
             if let Some(task_id) = kernel.curr_task {
                 kernel.ctx_switch.set_current_task_context(None); // nothing was running before this
                 if let Some(tcb) = kernel.tcb_list[task_id.0 as usize].as_ref() {
                     kernel.ctx_switch.activate_next_task(tcb.get_context());
                 }
-                kernel.ctx_switch.trigger_pendsv_switch();
+                kernel.ctx_switch.trigger_yield();
             }
         });
 
@@ -312,7 +312,7 @@ where
         if action == TickAction::RequestReschedule {
             let switched = self.execute_in_critical_section(|kernel| kernel.reschedule())?;
             if switched {
-                self.ctx_switch.trigger_pendsv_switch();
+                self.ctx_switch.trigger_yield();
             }
         }
 
@@ -378,7 +378,7 @@ where
         self.reschedule()?;
 
         // trigger context switch
-        self.ctx_switch.trigger_pendsv_switch();
+        self.ctx_switch.trigger_yield();
         Ok(()) // success
     }
 

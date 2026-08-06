@@ -79,7 +79,7 @@ impl ContextSwitch for V7mContextSwitch {
 
     /// DESCRIPTION
     /// trigger a PendSV switch to switch to the next task
-    fn trigger_pendsv_switch(&self) {
+    fn trigger_yield(&self) {
         unsafe {
             request_pendsv_pending(); // set PendSV pending bit HIGH
         }

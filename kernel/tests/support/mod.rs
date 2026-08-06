@@ -107,7 +107,7 @@ impl ContextSwitch for MockContextSwitch {
         Ok(stack_top as usize)
     }
 
-    fn trigger_pendsv_switch(&self) {
+    fn trigger_yield(&self) {
         self.trigger_count.fetch_add(1, Ordering::SeqCst);
     }
 
