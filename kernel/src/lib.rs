@@ -239,6 +239,7 @@ where
             task_context, // capture from initialise_task_context
             stack_guard_ctx,
             task_priority: priority,
+            wake_at_tick: None,
         });
 
         // advance cursor for next spawn
@@ -310,13 +311,78 @@ where
             .map_err(map_timer_err_to_kernel_err)?;
 
         if action == TickAction::RequestReschedule {
-            let switched = self.execute_in_critical_section(|kernel| kernel.reschedule())?;
+            let now = self
+                .system_timer
+                .current_tick()
+                .map_err(map_timer_err_to_kernel_err)?;
+            let switched = self.execute_in_critical_section(|kernel| {
+                kernel.wake_expired_tasks(now)?;
+                kernel.reschedule()
+            })?;
             if switched {
                 self.ctx_switch.trigger_yield();
             }
         }
 
         Ok(())
+    }
+
+    /// DESCRIPTION
+    /// promote any Blocked task whose wake deadline has passed back to Ready
+    fn wake_expired_tasks(&mut self, now: u64) -> Result<()> {
+        for idx in 0..MAX_TASKS {
+            let expired = match self.tcb_list[idx].as_ref() {
+                Some(tcb) if tcb.task_state == TaskState::Blocked => {
+                    tcb.wake_at_tick.filter(|&wake_at| now >= wake_at).map(|_| (tcb.task_id, tcb.task_priority))
+                }
+                _ => None,
+            };
+
+            if let Some((task_id, priority)) = expired {
+                if let Some(tcb) = self.tcb_list[idx].as_mut() {
+                    tcb.task_state = TaskState::Ready;
+                    tcb.wake_at_tick = None;
+                }
+                self.scheduler.enqueue_runnable(task_id, priority)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// DESCRIPTION
+    /// block the current task until at least the given tick, and switch to another runnable task
+    pub fn block_current_task_until(&mut self, wake_at_tick: u64) -> Result<()> {
+        self.execute_in_critical_section(|kernel| {
+            let current_task_id = kernel.curr_task.ok_or(KernelError::InvalidState)?;
+            let next_task_id = kernel
+                .scheduler
+                .select_next_runnable()
+                .ok_or(KernelError::NoRunnableTask)?; // no idle task exists yet to fall back on
+
+            let idx = current_task_id.0 as usize;
+            if let Some(tcb) = kernel.tcb_list[idx].as_mut() {
+                tcb.task_state = TaskState::Blocked;
+                tcb.wake_at_tick = Some(wake_at_tick);
+            }
+            kernel.set_task_state(next_task_id, TaskState::Running)?;
+            kernel.curr_task = Some(next_task_id);
+
+            let outgoing_ctx: Option<*mut CtxSwitchType::TaskContext> =
+                kernel.tcb_list[idx].as_mut().map(|tcb| tcb.get_context_mut() as *mut _);
+            kernel.ctx_switch.set_current_task_context(outgoing_ctx);
+
+            if let Some(tcb) = kernel.tcb_list[next_task_id.0 as usize].as_ref() {
+                kernel.ctx_switch.activate_next_task(tcb.get_context());
+            }
+
+            kernel
+                .system_timer
+                .restart()
+                .map_err(map_timer_err_to_kernel_err)?;
+
+            kernel.ctx_switch.trigger_yield();
+            Ok(())
+        })
     }
 
     /// DESCRIPTION
@@ -392,6 +458,12 @@ where
     /// get the currently processes task
     pub fn get_current_task(&self) -> Option<TaskId> {
         return self.curr_task;
+    }
+
+    /// DESCRIPTION
+    /// current tick count -> lets callers compute a wake_at_tick deadline for block_current_task_until
+    pub fn current_tick(&self) -> Result<u64> {
+        self.system_timer.current_tick().map_err(map_timer_err_to_kernel_err)
     }
 
     /// DESCRIPTION

@@ -9,12 +9,13 @@ mod support;
 
 use support::{
     dummy_entry, test_resources, MockContextSwitch, MockCriticalSection, MockScheduler,
-    POOL_CRIT, POOL_KERNEL_INIT, POOL_KERNEL_START_NO_TASK, POOL_QUEUE_FULL,
-    POOL_SPAWN_EXACT_FIT, POOL_SPAWN_FIRST_TASK_CONTEXT, POOL_SPAWN_NO_PREEMPT, POOL_SPAWN_OK,
-    POOL_SPAWN_PREEMPT, POOL_SPAWN_PREEMPT_CONTEXT, POOL_SPAWN_PREEMPT_REQUEUE_FULL,
-    POOL_SPAWN_REJECT, POOL_TICK_ACK_ON_ERROR, POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS,
-    POOL_TICK_SINGLE_TASK, POOL_TICK_SWITCH, POOL_TICK_SWITCH_CONTEXT, POOL_YIELD,
-    POOL_YIELD_RESTART, POOL_YIELD_SAME_PRIORITY,
+    POOL_BLOCK_NO_RUNNABLE_TASK, POOL_BLOCK_NO_STARVATION, POOL_BLOCK_REMOVES_FROM_ROTATION,
+    POOL_BLOCK_WAKES_ON_DEADLINE, POOL_CRIT, POOL_KERNEL_INIT, POOL_KERNEL_START_NO_TASK,
+    POOL_QUEUE_FULL, POOL_SPAWN_EXACT_FIT, POOL_SPAWN_FIRST_TASK_CONTEXT, POOL_SPAWN_NO_PREEMPT,
+    POOL_SPAWN_OK, POOL_SPAWN_PREEMPT, POOL_SPAWN_PREEMPT_CONTEXT,
+    POOL_SPAWN_PREEMPT_REQUEUE_FULL, POOL_SPAWN_REJECT, POOL_TICK_ACK_ON_ERROR,
+    POOL_TICK_NO_ACTION, POOL_TICK_NO_TASKS, POOL_TICK_SINGLE_TASK, POOL_TICK_SWITCH,
+    POOL_TICK_SWITCH_CONTEXT, POOL_YIELD, POOL_YIELD_RESTART, POOL_YIELD_SAME_PRIORITY,
 };
 
 use crate::support::MockSystemTimer;
@@ -667,4 +668,103 @@ fn on_tick_interrupt_switch_activates_correct_outgoing_and_incoming_context() {
     assert!(outgoing[0].is_some());
     // distinct tasks must not share a context value.
     assert_ne!(outgoing[0], Some(activated[0]));
+}
+
+#[test]
+fn block_current_task_until_removes_task_from_ready_rotation() {
+    let pool = unsafe { &mut *addr_of_mut!(POOL_BLOCK_REMOVES_FROM_ROTATION) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::RequestReschedule);
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        mock_timer,
+    );
+
+    let priority = TaskPriority::new(10).unwrap();
+    kernel.spawn_task(TaskId(1), priority, 1024, dummy_entry, null_mut()).unwrap();
+    kernel.spawn_task(TaskId(2), priority, 1024, dummy_entry, null_mut()).unwrap();
+
+    kernel.block_current_task_until(100).unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
+
+    // task1 is blocked, not merely requeued -> a tick before its deadline must not bring it back.
+    kernel.on_tick_interrupt().unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
+}
+
+#[test]
+fn blocked_task_wakes_when_deadline_reached() {
+    let pool = unsafe { &mut *addr_of_mut!(POOL_BLOCK_WAKES_ON_DEADLINE) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::RequestReschedule);
+    let now = mock_timer.current_tick_value.clone();
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        mock_timer,
+    );
+
+    let priority = TaskPriority::new(10).unwrap();
+    kernel.spawn_task(TaskId(1), priority, 1024, dummy_entry, null_mut()).unwrap();
+    kernel.spawn_task(TaskId(2), priority, 1024, dummy_entry, null_mut()).unwrap();
+
+    kernel.block_current_task_until(5).unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
+
+    now.store(5, Ordering::SeqCst);
+    kernel.on_tick_interrupt().unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(1)));
+}
+
+#[test]
+fn blocking_high_priority_task_does_not_starve_lower_priority_ready_tasks() {
+    let pool = unsafe { &mut *addr_of_mut!(POOL_BLOCK_NO_STARVATION) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        mock_timer,
+    );
+
+    let high_priority = TaskPriority::new(1).unwrap();
+    let low_priority = TaskPriority::new(20).unwrap();
+    kernel.spawn_task(TaskId(1), high_priority, 1024, dummy_entry, null_mut()).unwrap();
+    kernel.spawn_task(TaskId(2), low_priority, 1024, dummy_entry, null_mut()).unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(1))); // high priority runs first, as expected
+
+    // busy-waiting (plain yield_now()) would keep reselecting TaskId(1) forever, since
+    // dequeue_highest_internal() always returns the highest-priority ready task -> the
+    // low-priority TaskId(2) would starve. Blocking must bypass that entirely.
+    kernel.block_current_task_until(100).unwrap();
+    assert_eq!(kernel.get_current_task(), Some(TaskId(2)));
+}
+
+#[test]
+fn block_current_task_until_errors_when_no_other_runnable_task() {
+    let pool = unsafe { &mut *addr_of_mut!(POOL_BLOCK_NO_RUNNABLE_TASK) };
+    let (mock_ctx_switch, _trigger_count) = MockContextSwitch::new();
+    let (mock_timer, _ack_count) = MockSystemTimer::new(TickAction::None);
+    let mut kernel = Kernel::new(
+        mock_ctx_switch,
+        MockCriticalSection,
+        FppScheduler::new(),
+        test_resources(pool),
+        mock_timer,
+    );
+
+    kernel
+        .spawn_task(TaskId(1), TaskPriority::new(10).unwrap(), 1024, dummy_entry, null_mut())
+        .unwrap();
+
+    let result = kernel.block_current_task_until(50);
+    assert_eq!(result, Err(KernelError::NoRunnableTask));
+    assert_eq!(kernel.get_current_task(), Some(TaskId(1))); // unchanged -> failure must not half-apply
 }

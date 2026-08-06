@@ -1,7 +1,7 @@
 use core::ops::FnOnce;
 use core::ptr::addr_of_mut;
 use core::result::Result;
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use kernel::KernelStackResources;
 use specs::arch::{
@@ -34,6 +34,10 @@ pub static mut POOL_SPAWN_PREEMPT_CONTEXT: [u8; 4096] = [0; 4096];
 pub static mut POOL_TICK_SWITCH_CONTEXT: [u8; 4096] = [0; 4096];
 pub static mut POOL_KERNEL_START_NO_TASK: [u8; 1024] = [0; 1024];
 pub static mut POOL_SPAWN_EXACT_FIT: [u8; 4096] = [0; 4096];
+pub static mut POOL_BLOCK_REMOVES_FROM_ROTATION: [u8; 4096] = [0; 4096];
+pub static mut POOL_BLOCK_WAKES_ON_DEADLINE: [u8; 4096] = [0; 4096];
+pub static mut POOL_BLOCK_NO_STARVATION: [u8; 4096] = [0; 4096];
+pub static mut POOL_BLOCK_NO_RUNNABLE_TASK: [u8; 1024] = [0; 1024];
 
 const TEST_MAX_TASKS: usize = 32;
 static mut MOCK_STACK_GUARD_SLOTS: [Option<StackGuardContext>; TEST_MAX_TASKS] =
@@ -191,6 +195,7 @@ pub struct MockSystemTimer {
     pub next_action: TickAction,
     pub ack_count: Arc<AtomicU32>,
     pub restart_count: Arc<AtomicU32>,
+    pub current_tick_value: Arc<AtomicU64>,
 }
 
 impl MockSystemTimer {
@@ -204,6 +209,7 @@ impl MockSystemTimer {
                 next_action,
                 ack_count: ack_count.clone(),
                 restart_count: Arc::new(AtomicU32::new(0)),
+                current_tick_value: Arc::new(AtomicU64::new(0)),
             },
             ack_count,
         )
@@ -228,6 +234,10 @@ impl SystemTimer for MockSystemTimer {
     fn restart(&mut self) -> Result<(), Self::Error> {
         self.restart_count.fetch_add(1, Ordering::SeqCst);
         Ok(())
+    }
+
+    fn current_tick(&self) -> Result<u64, Self::Error> {
+        Ok(self.current_tick_value.load(Ordering::SeqCst))
     }
 
     fn acknowledge_tick_interrupt(&mut self) -> Result<(), Self::Error> {

@@ -10,6 +10,7 @@ pub enum KernelError {
     InvalidPriority,
     ReadyQueueFull,
     TimerFault,
+    NoRunnableTask,
 }
 
 /// DESCRIPTION
@@ -25,6 +26,7 @@ impl Display for KernelError {
             KernelError::InvalidPriority => f.write_str("invalid priority"),
             KernelError::ReadyQueueFull => f.write_str("ready queue full"),
             KernelError::TimerFault => f.write_str("system timer fault"),
+            KernelError::NoRunnableTask => f.write_str("no runnable task to switch to"),
         }
     }
 }

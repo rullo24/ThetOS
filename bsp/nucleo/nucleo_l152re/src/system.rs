@@ -52,6 +52,22 @@ fn on_systick_tick() {
     }
 }
 
+/// DESCRIPTION
+/// block the calling task until at least the given tick -> callable from task code.
+pub fn block_current_task_until(wake_at_tick: u64) -> Result<()> {
+    unsafe {
+        (*addr_of_mut!(SYSTEM)).as_mut().ok_or(specs::kernel::KernelError::InvalidState)?.block_current_task_until(wake_at_tick)
+    }
+}
+
+/// DESCRIPTION
+/// current tick count -> callable from task code, e.g. to compute a delay deadline.
+pub fn current_tick() -> Result<u64> {
+    unsafe {
+        (*addr_of_mut!(SYSTEM)).as_mut().ok_or(specs::kernel::KernelError::InvalidState)?.current_tick()
+    }
+}
+
 /// Board-facing system facade for Nucleo-L152RE.
 pub struct System {
     kernel: Kernel<
@@ -117,6 +133,18 @@ impl System {
     /// request a cooperative yield.
     pub fn yield_now(&mut self) -> Result<()> {
         self.kernel.yield_now()
+    }
+
+    /// DESCRIPTION
+    /// block the calling task until at least the given tick.
+    pub fn block_current_task_until(&mut self, wake_at_tick: u64) -> Result<()> {
+        self.kernel.block_current_task_until(wake_at_tick)
+    }
+
+    /// DESCRIPTION
+    /// current tick count -> use to compute a wake_at_tick deadline.
+    pub fn current_tick(&self) -> Result<u64> {
+        self.kernel.current_tick()
     }
 
     /// DESCRIPTION

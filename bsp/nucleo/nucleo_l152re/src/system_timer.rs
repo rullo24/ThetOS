@@ -46,6 +46,12 @@ impl SystemTimer for NucleoSystemTimer {
     }
 
     /// DESCRIPTION
+    /// return the software-extended SysTick tick count
+    fn current_tick(&self) -> Result<u64, Self::Error> {
+        self.systick.current_tick()
+    }
+
+    /// DESCRIPTION
     /// clear the pending SysTick exception request
     fn acknowledge_tick_interrupt(&mut self) -> Result<(), Self::Error> {
         self.systick.clear_pending()

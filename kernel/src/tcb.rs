@@ -16,6 +16,7 @@ pub struct TaskControlBlock<Context> {
     pub task_context: Context,
     pub stack_guard_ctx: StackGuardContext,
     pub task_priority: TaskPriority,
+    pub wake_at_tick: Option<u64>, // Some(tick) while Blocked -> the tick at/after which this task becomes Ready again
 }
 
 impl<Context> CoreTcb<Context> for TaskControlBlock<Context> {

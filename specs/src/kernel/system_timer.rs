@@ -29,6 +29,10 @@ pub trait SystemTimer {
     fn restart(&mut self) -> Result<(), Self::Error>;
 
     /// DESCRIPTION
+    /// return the current tick count -> used as the "now" reference for blocked-task wake deadlines
+    fn current_tick(&self) -> Result<u64, Self::Error>;
+
+    /// DESCRIPTION
     /// clear pending interrupt state after tick
     fn acknowledge_tick_interrupt(&mut self) -> Result<(), Self::Error>;
 
