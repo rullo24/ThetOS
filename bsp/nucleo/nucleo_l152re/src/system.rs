@@ -152,7 +152,12 @@ impl System {
         let idle_stack_limit = addr_of_mut!(IDLE_STACK) as *mut u8;
         let idle_stack_top = idle_stack_limit.wrapping_add(IDLE_STACK_SIZE_BYTES);
         kernel
-            .spawn_idle_task(idle_task_entry, null_mut(), idle_stack_top, idle_stack_limit)
+            .spawn_idle_task(
+                idle_task_entry,
+                null_mut(),
+                idle_stack_top,
+                idle_stack_limit,
+            )
             .expect("idle task spawn failed");
 
         Self { kernel }
