@@ -1,5 +1,3 @@
-use core::result::Result;
-
 // used for local typestate
 mod sealed {
     pub trait Sealed {}
@@ -54,17 +52,13 @@ pub trait UninitPin {
 }
 
 pub trait InputPin {
-    type Error: core::fmt::Debug;
-
     /// DESCRIPTION
     /// Reads the current logical level of the pin and returns it
-    fn read(&self) -> Result<GpioLevel, Self::Error>;
+    fn read(&self) -> GpioLevel;
 }
 
 pub trait OutputPin {
-    type Error: core::fmt::Debug;
-
     /// DESCRIPTION
     /// Sets the logical level of the pin to a GpioLevel
-    fn set(&mut self, level: GpioLevel) -> Result<(), Self::Error>;
+    fn set(&mut self, level: GpioLevel);
 }

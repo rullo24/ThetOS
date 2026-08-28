@@ -163,7 +163,6 @@ impl System {
         Self { kernel }
     }
 
-    // TODO: remove this method before release
     /// DESCRIPTION
     /// request PendSV pending.
     pub fn request_pendsv_pending(&mut self) -> Result<()> {

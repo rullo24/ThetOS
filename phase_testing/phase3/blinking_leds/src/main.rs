@@ -1,10 +1,14 @@
 #![no_std]
 #![no_main]
 
+// STD INCLUDES
 use core::panic::PanicInfo;
 use core::ptr::{addr_of_mut, null_mut};
+
+// USER INCLUDES
 use entry::entry;
-use nucleo_l152re::System;
+use nucleo_l152re::{system, System, PA5};
+use specs::bsp::{GpioLevel, OutputPin, OutputStyle, UninitPin};
 use specs::common::TaskId;
 use specs::kernel::TaskPriority;
 
@@ -15,16 +19,22 @@ fn panic(_info: &PanicInfo) -> ! {
 
 static mut STACK_POOL: [u8; 4096] = [0; 4096];
 
-extern "C" fn blink_onboard(_arg: *mut ()) -> ! {
-    loop {} // TODO: replace with blink logic
+extern "C" fn blink_task(_arg: *mut ()) -> ! {
+    // capture LD2 user LED
+    let mut ld2 = PA5.into_output(OutputStyle::PushPull);
+
+    loop {
+        ld2.set(GpioLevel::High);
+        system::delay_ms(500).unwrap();
+        ld2.set(GpioLevel::Low);
+        system::delay_ms(500).unwrap();
+    }
 }
 
 #[entry]
 fn app_main() -> ! {
     let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
-    let system = System::new_with_pool(p_stack_pool);
-
-    // OUTPUT direction on LED GPIO
+    let mut system = System::new_with_pool(p_stack_pool);
 
     // define tasks
     system
@@ -32,7 +42,7 @@ fn app_main() -> ! {
             TaskId(1),
             TaskPriority::default(),
             4096,
-            blink_onboard,
+            blink_task,
             null_mut(),
         )
         .unwrap();
