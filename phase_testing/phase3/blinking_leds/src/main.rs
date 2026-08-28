@@ -25,9 +25,9 @@ extern "C" fn blink_task(_arg: *mut ()) -> ! {
 
     loop {
         ld2.set(GpioLevel::High);
-        system::delay_ms(500).unwrap();
+        system::delay_ms(1000).unwrap();
         ld2.set(GpioLevel::Low);
-        system::delay_ms(500).unwrap();
+        system::delay_ms(1000).unwrap();
     }
 }
 

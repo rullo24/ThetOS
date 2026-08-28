@@ -2,23 +2,29 @@ use core::marker::PhantomData;
 use core::ptr::{read_volatile, write_volatile};
 
 use specs::bsp::gpio::{
-    GpioLevel, Input, InputPin, Output, OutputPin, OutputStyle, PinMode, PullState, Uninit, UninitPin,
+    GpioLevel, Input, InputPin, Output, OutputPin, OutputStyle, PinMode, PullState, Uninit,
+    UninitPin,
 };
 
 use super::port::GpioPort;
 
-// GPIO register field encodings | Ref: RM0038 7.4
-const MODER_INPUT: u32 = 0b00;
-const MODER_OUTPUT: u32 = 0b01;
-const PUPDR_NONE: u32 = 0b00;
-const PUPDR_UP: u32 = 0b01;
-const PUPDR_DOWN: u32 = 0b10;
-const TWO_BIT_MASK: u32 = 0b11;
+// GPIO register field encodings, identical for every port | Ref: RM0038 rev 18 ch.7
+const MODER_INPUT: u32 = 0b00; // GPIOx_MODER field: input mode | s7.4.1
+const MODER_OUTPUT: u32 = 0b01; // GPIOx_MODER field: general purpose output mode | s7.4.1
+const PUPDR_NONE: u32 = 0b00; // GPIOx_PUPDR field: no pull-up / pull-down | s7.4.4
+const PUPDR_UP: u32 = 0b01; // GPIOx_PUPDR field: pull-up | s7.4.4
+const PUPDR_DOWN: u32 = 0b10; // GPIOx_PUPDR field: pull-down | s7.4.4
+const TWO_BIT_MASK: u32 = 0b11; // width of one MODER / PUPDR field (2 bits per pin)
+                                // GPIOx_OTYPER: 0 = push-pull, 1 = open-drain, 1 bit per pin | s7.4.2
+                                // GPIOx_OSPEEDR: left at reset (00 = low speed), adequate for on/off signalling | s7.4.3
+                                // GPIOx_BSRR: low half sets ODR, high half (bit + 16) resets ODR, write-only | s7.4.7
+                                // GPIOx_IDR: one read-only bit per pin | s7.4.5
 
 pub struct Pin<PORT: GpioPort, const PIN_INDEX: u8, MODE: PinMode> {
     _marker: PhantomData<(PORT, MODE)>,
 }
 
+// helpers shared by a pin in any mode
 impl<PORT: GpioPort, const PIN_INDEX: u8, MODE: PinMode> Pin<PORT, PIN_INDEX, MODE> {
     /// DESCRIPTION
     /// enable this port's CLK, then read it back
@@ -31,6 +37,7 @@ impl<PORT: GpioPort, const PIN_INDEX: u8, MODE: PinMode> Pin<PORT, PIN_INDEX, MO
     }
 }
 
+// pre-configuration state -> build a handle without touching hardware
 impl<PORT: GpioPort, const PIN_INDEX: u8> Pin<PORT, PIN_INDEX, Uninit> {
     /// DESCRIPTION
     /// pre-config handle -> doesn't touch hardware
@@ -42,12 +49,18 @@ impl<PORT: GpioPort, const PIN_INDEX: u8> Pin<PORT, PIN_INDEX, Uninit> {
     }
 }
 
+// Default forwards to new() -> lets an Uninit pin sit in a derived struct
 impl<PORT: GpioPort, const PIN_INDEX: u8> Default for Pin<PORT, PIN_INDEX, Uninit> {
+    /// DESCRIPTION
+    /// same as new() -> an unconfigured pin handle
     fn default() -> Self {
         Self::new()
     }
 }
 
+// Uninit -> configured: the only impl that writes MODER / OTYPER / PUPDR
+// each write is read -> clear this pin's field -> OR in the new value, so other pins'
+// config is preserved (port A resets PA13/14/15 to SWD alternate-function + pulls)
 impl<PORT: GpioPort, const PIN_INDEX: u8> UninitPin for Pin<PORT, PIN_INDEX, Uninit> {
     type Input = Pin<PORT, PIN_INDEX, Input>;
     type Output = Pin<PORT, PIN_INDEX, Output>;
@@ -96,6 +109,7 @@ impl<PORT: GpioPort, const PIN_INDEX: u8> UninitPin for Pin<PORT, PIN_INDEX, Uni
     }
 }
 
+// output-mode behaviour -> level writes go through BSRR
 impl<PORT: GpioPort, const PIN_INDEX: u8> OutputPin for Pin<PORT, PIN_INDEX, Output> {
     /// DESCRIPTION
     /// Sets the logical level of the pin to a GpioLevel
@@ -109,6 +123,7 @@ impl<PORT: GpioPort, const PIN_INDEX: u8> OutputPin for Pin<PORT, PIN_INDEX, Out
     }
 }
 
+// input-mode behaviour -> level reads come from IDR
 impl<PORT: GpioPort, const PIN_INDEX: u8> InputPin for Pin<PORT, PIN_INDEX, Input> {
     /// DESCRIPTION
     /// Reads the current logical level of the pin and returns it
