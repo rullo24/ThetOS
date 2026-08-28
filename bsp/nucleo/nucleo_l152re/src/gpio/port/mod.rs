@@ -38,5 +38,15 @@ macro_rules! define_port {
     };
 }
 
-mod porta;
-pub use porta::PortA;
+mod port_a;
+mod port_b;
+mod port_c;
+mod port_d;
+mod port_e;
+mod port_h;
+pub use port_a::PortA;
+pub use port_b::PortB;
+pub use port_c::PortC;
+pub use port_d::PortD;
+pub use port_e::PortE;
+pub use port_h::PortH;
