@@ -32,9 +32,11 @@ docs/           design records, runbooks, scope, and superseded planning
 
 The authoritative boundary definitions are in [`docs/scope.md`](docs/scope.md).
 
-## Building and testing
+## Setup
 
-The default build target is embedded (set in `.cargo/config.toml`); install it with `rustup target add <triple>` first, or let the pinned `rust-toolchain.toml` do it.
+Everything to install on a fresh machine — toolchain, flash/debug tools per OS, probe permissions, and a verification step — is in [`docs/setup.md`](docs/setup.md). With rustup installed, the Rust side needs no manual steps: `rust-toolchain.toml` pins the compiler and the `thumbv7m-none-eabi` target and installs them on first build.
+
+## Building and testing
 
 - `cargo build` — the core crates.
 - `cargo build --workspace` — everything, including the validation binaries.
@@ -50,6 +52,7 @@ A firmware project outside this workspace depends on the entry-macro crate and a
 
 ## Documentation
 
+- [`docs/setup.md`](docs/setup.md) — install everything on a fresh machine, up to a blinking LED.
 - [`docs/scope.md`](docs/scope.md) — what v1.0.0 is, what it isn't, the architecture boundaries.
 - [`docs/decisions/`](docs/decisions/) — architecture decision records: each choice, its alternatives, its consequences.
 - [`docs/runbooks/`](docs/runbooks/) — reproducible gatekeeper validation procedures.
