@@ -87,6 +87,15 @@ fn map_timer_err_to_kernel_err<E: core::fmt::Debug>(_err: E) -> KernelError {
     KernelError::TimerFault
 }
 
+/// DESCRIPTION
+/// deliberate terminal fault -> a corrupted canary means this task's stack has overflowed and
+/// cannot be safely resumed. Halts via the application's #[panic_handler] (the safe-state hook).
+#[cold]
+#[inline(never)]
+fn stack_guard_fault(task: TaskId) -> ! {
+    panic!("stack guard violation on task {}", task.0);
+}
+
 // hardware-blind kernel
 pub struct Kernel<
     CtxSwitchType,
@@ -436,7 +445,7 @@ where
                 .and_then(|s| s.as_mut())
             {
                 if self.stack_resources.stack_guard.check(ctx).is_err() {
-                    panic!("stack guard violation detected");
+                    stack_guard_fault(tid);
                 }
             }
         }
