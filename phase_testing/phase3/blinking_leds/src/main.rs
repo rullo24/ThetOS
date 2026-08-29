@@ -7,10 +7,7 @@ use core::ptr::{addr_of_mut, null_mut};
 
 // USER INCLUDES
 use thetos_entry::entry;
-use nucleo_l152re::{system, System, PA5};
-use specs::bsp::{GpioLevel, OutputPin, OutputStyle, UninitPin};
-use specs::common::TaskId;
-use specs::kernel::TaskPriority;
+use nucleo_l152re::{system, GpioLevel, OutputPin, OutputStyle, System, TaskId, TaskPriority, UninitPin, PA5};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {

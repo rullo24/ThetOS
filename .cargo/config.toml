@@ -14,6 +14,8 @@ rustflags = [
 [thetos]
 bsp = "nucleo_l152re" # Rust crate name of bsp used for examples
 
+# machine-specific: point at your OpenOCD install. Linux: /usr/share/openocd/scripts.
+# macOS Homebrew: /opt/homebrew/share/openocd/scripts. Only used by scripts/*.py.
 [scripting]
 gdb_instance = "arm-none-eabi-gdb"
 openocd_interface = "interface/stlink.cfg" # default for ST-Link (use /scripts/list_openocd.py to list available interfaces)

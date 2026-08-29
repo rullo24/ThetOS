@@ -1,6 +1,6 @@
 [package]
 name = "double_gpio_toggle"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 build = "../../../.cargo/build.rs"
 
@@ -11,7 +11,6 @@ name = "double_gpio_toggle"
 thetos_entry = { path = "../../../macros/thetos_entry" }
 nucleo_l152re = { path = "../../../bsp/nucleo/nucleo_l152re" }
 cortex_m = { path = "../../../arch/cortex-m" }
-specs = { path = "../../../specs" }
 
 [build-dependencies]
 toml = { workspace = true }

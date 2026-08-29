@@ -93,7 +93,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
     * **Stack Guard Evidence**: Verified detection of intentional stack corruption via GDB.
 * **Tests that must pass:** None (validation is via GDB and hardware; see Gatekeeper 2).
 * **Gatekeeper 2:** A "Primitive Switch" demo where the CPU successfully jumps from `main()` to a single hard-coded function, verified via GDB register inspection.
-* **Detailed implementation guide:** [docs/phase2/phase2_hardware_port.md](phase2/phase2_hardware_port.md).
+* **Detailed implementation guide:** [phase2_hardware_port.md](phase2_hardware_port.md).
 
 ---
 
@@ -112,7 +112,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
     * **System Heartbeat**: Working implementation of `SystemTimer` triggering the scheduler's `yield` logic.
 * **Tests that must pass:** `cargo test -p kernel` passes on a host target. At least: (1) unit tests for ready-list behaviour (add task, remove/select next, ordering) using mock `ContextSwitch` and mock `CriticalSection`; (2) unit tests that the scheduler invokes the context switch trait as expected. Multi-blinky on hardware remains manual (see Gatekeeper 3).
 * **Gatekeeper 3:** "Multi-Blinky" validation. Two independent tasks toggling distinct GPIO pins, managed by the scheduler, running on physical hardware with no race conditions.
-* **Detailed implementation guide:** [docs/phase3/phase3_minimal_kernel.md](phase3/phase3_minimal_kernel.md).
+* **Detailed implementation guide:** [phase3_minimal_kernel.md](phase3_minimal_kernel.md).
 
 ---
 

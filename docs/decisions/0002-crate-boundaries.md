@@ -13,7 +13,7 @@ Five crates, fixed roles, one-way dependencies:
 - `mcu/` silicon bring-up (reset, memory map, vector table)
 - `bsp/` board composition; depends on `kernel + arch + mcu + specs`
 
-No reverse dependencies. Concrete structs never live in `specs/`. Full hard-defines and review checklist: `roadmap.md`.
+No reverse dependencies. Concrete structs never live in `specs/`. Full hard-defines and review checklist: [`../scope.md`](../scope.md).
 
 ## Alternatives
 - Single crate with modules: no enforced boundary, register code leaks into the kernel.

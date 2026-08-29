@@ -1,6 +1,6 @@
 # Phase 2 — Gatekeeper 2 runbook
 
-This document is the **repeatable** procedure to validate **Gatekeeper 2** on physical hardware: build, flash, attach GDB, and interpret pass/fail. Definitions and scope: [docs/roadmap.md](../roadmap.md), [docs/phase2/phase2_hardware_port.md](../phase2/phase2_hardware_port.md).
+This document is the **repeatable** procedure to validate **Gatekeeper 2** on physical hardware: build, flash, attach GDB, and interpret pass/fail. Definitions and scope: [docs/history/roadmap.md](../history/roadmap.md), [docs/history/phase2_hardware_port.md](../history/phase2_hardware_port.md).
 
 ## Prerequisites
 
@@ -114,9 +114,9 @@ This demo uses **`specs::arch::StackGuard`** with **`cortex_m::CortexMStackGuard
 
 4. **Optional:** `info address STACK` then `x/wx <addr>` — after the demo the first word at `stack_limit` is **intentionally** `0` (stomp before the failing `check`).
 
-For the full Phase 2 evidence checklist, see [docs/phase2/phase2_hardware_port.md](../phase2/phase2_hardware_port.md).
+For the full Phase 2 evidence checklist, see [docs/history/phase2_hardware_port.md](../history/phase2_hardware_port.md).
 
 ## Related
 
-- [docs/roadmap.md](../roadmap.md) — milestones and Gatekeeper wording.
-- [docs/phase2/phase2_hardware_port.md](../phase2/phase2_hardware_port.md) — implementation detail and evidence checklist.
+- [docs/history/roadmap.md](../history/roadmap.md) — milestones and Gatekeeper wording.
+- [docs/history/phase2_hardware_port.md](../history/phase2_hardware_port.md) — implementation detail and evidence checklist.

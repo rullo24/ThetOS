@@ -4,9 +4,7 @@
 use core::panic::PanicInfo;
 use core::ptr::{addr_of_mut, null_mut};
 use thetos_entry::entry;
-use nucleo_l152re::{system, System};
-use specs::common::TaskId;
-use specs::kernel::TaskPriority;
+use nucleo_l152re::{system, System, TaskId, TaskPriority};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {

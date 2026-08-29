@@ -36,7 +36,7 @@ Missing for Phase 3 completion:
 
 - **Kernel purity:** no PAC/register code in `kernel/`; timer and GPIO only through traits or BSP-owned glue.
 - **Atomicity model:** kernel data structures updated only inside `CriticalSection::with_execute` (or equivalent) on targets where preemptive interrupts exist.
-- **Dependency direction:** unchanged vs [docs/roadmap.md](../roadmap.md) architecture boundaries.
+- **Dependency direction:** unchanged vs [roadmap.md](roadmap.md) architecture boundaries.
 - **Scheduler location:** policy and ready list live in `kernel/`; `arch/` supplies `ContextSwitch`, `CriticalSection` impl, and interrupt/timer mechanics as declared by traits.
 - **Scheduler policy note:** the tree ships **`FppScheduler`** (fixed-priority preemptive). This is the deliberate thesis choice, superseding the round-robin plan in earlier drafts; rationale and alternatives in [docs/decisions/0004-fpp-scheduler.md](../decisions/0004-fpp-scheduler.md). Equal-priority tasks are still served FIFO (round-robin within a level).
 
@@ -75,7 +75,7 @@ Missing for Phase 3 completion:
 
 8. **Tests (roadmap-mandated)**
    - `cargo test -p kernel` on a **host** target: ready-list tests with **mock** `ContextSwitch` and **mock** `CriticalSection`; tests that **scheduler** invokes **`trigger_pendsv_switch`** (or the trait method you standardise on) when policy says switch.
-   - Done when CI/local `cargo test` satisfies the Phase 3 bullet in [docs/roadmap.md](../roadmap.md).
+   - Done when CI/local `cargo test` satisfies the Phase 3 bullet in [roadmap.md](roadmap.md).
 
 9. **Runbook / evidence (mirror Phase 2 style)**
    - Add **`docs/runbooks/phase3_gatekeeper.md`** (or extend a single runbooks index): build/flash/debug, **multi-blinky** pass/fail, optional logic-analyser notes for Gatekeeper 3.
@@ -108,5 +108,5 @@ Gatekeeper 3 passes when **multi-blinky** (or equivalent) is **repeatable** on h
 
 ## Related
 
-- [docs/roadmap.md](../roadmap.md) — Phase 3 objectives, tests, Gatekeeper 3.
-- [docs/phase2/phase2_hardware_port.md](../phase2/phase2_hardware_port.md) — context switch prerequisites.
+- [roadmap.md](roadmap.md) — Phase 3 objectives, tests, Gatekeeper 3.
+- [phase2_hardware_port.md](phase2_hardware_port.md) — context switch prerequisites.

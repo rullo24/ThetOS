@@ -1,6 +1,6 @@
 # Phase 3 — Gatekeeper 3 runbook
 
-This document is the **repeatable** procedure to validate **Gatekeeper 3** on physical hardware: build, flash, attach GDB, and interpret pass/fail. Definitions and scope: [docs/roadmap.md](../roadmap.md), [docs/phase3/phase3_minimal_kernel.md](../phase3/phase3_minimal_kernel.md).
+This document is the **repeatable** procedure to validate **Gatekeeper 3** on physical hardware: build, flash, attach GDB, and interpret pass/fail. Definitions and scope: [docs/history/roadmap.md](../history/roadmap.md), [docs/history/phase3_minimal_kernel.md](../history/phase3_minimal_kernel.md).
 
 Roadmap Gatekeeper 3: *"Multi-Blinky" validation. Two independent tasks toggling distinct GPIO pins, managed by the scheduler, running on physical hardware with no race conditions.*
 
@@ -105,7 +105,7 @@ Phase 3 demos live under `phase_testing/phase3/` (workspace package name is the 
 
 ## Why there are no race conditions
 
-State this in the evidence pack ([#36](../phase3/phase3_minimal_kernel.md)); no extra code proves it:
+State this in the evidence pack ([gatekeeper3_evidence.md](../gatekeeper3_evidence.md)); no extra code proves it:
 
 - Each task owns a **distinct** `Pin<PortA, N, Output>` — no shared pin object.
 - Level changes go through `GPIOx_BSRR`, a write-only register with one bit per set/reset action — never a read-modify-write on `ODR` — so a context switch between the two tasks' writes cannot lose or corrupt either pin.
@@ -137,6 +137,6 @@ print/x TICK_CYCLES_MAX
 
 ## Related
 
-- [docs/roadmap.md](../roadmap.md) — milestones and Gatekeeper wording.
-- [docs/phase3/phase3_minimal_kernel.md](../phase3/phase3_minimal_kernel.md) — implementation detail and the Gatekeeper 3 evidence package.
+- [docs/history/roadmap.md](../history/roadmap.md) — milestones and Gatekeeper wording.
+- [docs/history/phase3_minimal_kernel.md](../history/phase3_minimal_kernel.md) — implementation detail and the Gatekeeper 3 evidence package.
 - [docs/runbooks/phase2_gatekeeper.md](phase2_gatekeeper.md) — Phase 2 procedure (context-switch and stack-guard prerequisites).

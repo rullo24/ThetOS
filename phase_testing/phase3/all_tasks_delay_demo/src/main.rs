@@ -4,9 +4,7 @@
 use core::panic::PanicInfo;
 use core::ptr::{addr_of_mut, null_mut};
 use thetos_entry::entry;
-use nucleo_l152re::{system, System};
-use specs::common::TaskId;
-use specs::kernel::TaskPriority;
+use nucleo_l152re::{system, System, TaskId, TaskPriority};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -16,10 +14,9 @@ fn panic(_info: &PanicInfo) -> ! {
 static mut STACK_POOL: [u8; 2048] = [0; 2048];
 static mut COUNTER_A: u32 = 0;
 static mut COUNTER_B: u32 = 0;
-// counts every delay_ms() that came back NoRunnableTask (would-be simultaneous block) ->
-// proves the "everyone wants to sleep" case is actually hit, not just theorised. There is
-// no idle task, so block_current_task_until() refuses to block the last runnable task and
-// hands the error back instead; the caller here just treats that as "nothing to do yet".
+// counted delay_ms() calls that returned NoRunnableTask, from before an idle task existed.
+// an idle task is now auto-spawned, so delay_ms() always has a switch target and this stays
+// 0 -> kept as a regression check: a non-zero value means the idle-task guarantee broke.
 static mut DELAY_REFUSED_COUNT: u32 = 0;
 
 extern "C" fn task_a(_arg: *mut ()) -> ! {
