@@ -45,7 +45,7 @@ extern "C" fn task_c(_arg: *mut ()) -> ! {
 #[entry]
 fn app_main() -> ! {
     let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
-    let mut system = System::new_with_pool(p_stack_pool);
+    let mut system = System::new_with_pool(p_stack_pool).unwrap();
 
     // spawn 3x same-priority tasks -> round-robin among equal-priority tasks (FPP with one priority level)
     system

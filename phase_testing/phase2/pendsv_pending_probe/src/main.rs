@@ -21,7 +21,7 @@ static mut STACK_POOL: [u8; 1024] = [0; 1024];
 fn app_main() -> ! {
     let mut x: u32 = 0;
     let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
-    let mut system = System::new_with_pool(p_stack_pool);
+    let mut system = System::new_with_pool(p_stack_pool).unwrap();
 
     disable_interrupts();
     system.request_pendsv_pending().unwrap(); // request PendSV pending (check in GDB)

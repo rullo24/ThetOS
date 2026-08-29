@@ -10,5 +10,5 @@ pub mod system_timer;
 
 pub use gpio::*; // export all GPIO pins
 pub use limits::MAX_TASKS;
-pub use system::System;
+pub use system::{System, SystemInitError};
 pub use system_timer::NucleoSystemTimer;

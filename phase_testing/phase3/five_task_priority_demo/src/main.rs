@@ -72,7 +72,7 @@ extern "C" fn task_p31(_arg: *mut ()) -> ! {
 #[entry]
 fn app_main() -> ! {
     let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
-    let mut system = System::new_with_pool(p_stack_pool);
+    let mut system = System::new_with_pool(p_stack_pool).unwrap();
 
     system.spawn_task(TaskId(1), TaskPriority::new(0).unwrap(), 1024, task_p0, null_mut()).unwrap();
     system.spawn_task(TaskId(2), TaskPriority::new(7).unwrap(), 1024, task_p7, null_mut()).unwrap();

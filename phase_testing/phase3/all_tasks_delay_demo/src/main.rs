@@ -47,7 +47,7 @@ extern "C" fn task_b(_arg: *mut ()) -> ! {
 #[entry]
 fn app_main() -> ! {
     let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
-    let mut system = System::new_with_pool(p_stack_pool);
+    let mut system = System::new_with_pool(p_stack_pool).unwrap();
 
     // only 2 tasks, same priority, same delay -> both frequently want to be blocked at once
     system

@@ -8,12 +8,12 @@ use cortex_m::v7m::{
     configure_kernel_interrupt_priorities, init_cycle_counter, read_cycle_counter,
     set_tick_callback,
 };
-use cortex_m::{wfi, CortexMCriticalSection, CortexMStackGuard, V7mContextSwitch};
+use cortex_m::{wfi, CortexMCriticalSection, CortexMStackGuard, SysTickError, V7mContextSwitch};
 use kernel::scheduler::FppScheduler;
 use kernel::{Kernel, KernelStackResources};
 use specs::arch::StackGuardContext;
 use specs::common::TaskId;
-use specs::kernel::{Result, SystemTimer, TaskPriority};
+use specs::kernel::{KernelError, Result, SystemTimer, TaskPriority};
 
 // RM0038 rev 18 s6.2.3 "MSI clock" pg 132: MSI raised to its fastest range (range 6) at boot
 // by stm32l152ret6::clock::set_msi_max_range() -> SYSCLK = 4,194,304 Hz, not the 2,097,152 Hz default
@@ -119,10 +119,20 @@ pub struct System {
     >,
 }
 
+/// DESCRIPTION
+/// board bring-up failure -> only reachable from a mis-configured BSP build, never at runtime
+#[derive(Debug)]
+pub enum SystemInitError {
+    Timer(SysTickError),
+    IdleSpawn(KernelError),
+}
+
 impl System {
     /// DESCRIPTION
     /// create a board-composed system instance (`stack_pool` is SRAM reserved for kernel task stacks)
-    pub fn new_with_pool(stack_pool: &'static mut [u8]) -> Self {
+    pub fn new_with_pool(
+        stack_pool: &'static mut [u8],
+    ) -> core::result::Result<Self, SystemInitError> {
         // PendSV/SysTick set to same lowest priority before the timer starts (standard Cortex-M RTOS convention)
         unsafe {
             configure_kernel_interrupt_priorities();
@@ -132,7 +142,7 @@ impl System {
         let mut system_timer = NucleoSystemTimer::new();
         system_timer
             .initialise(SYSTICK_RELOAD_TICKS)
-            .expect("SysTick initialise failed"); // configured but not started -> run() starts it once all init is complete
+            .map_err(SystemInitError::Timer)?; // configured but not started -> run() starts it once all init is complete
 
         let mut kernel = Kernel::new(
             V7mContextSwitch,
@@ -158,9 +168,9 @@ impl System {
                 idle_stack_top,
                 idle_stack_limit,
             )
-            .expect("idle task spawn failed");
+            .map_err(SystemInitError::IdleSpawn)?;
 
-        Self { kernel }
+        Ok(Self { kernel })
     }
 
     /// DESCRIPTION

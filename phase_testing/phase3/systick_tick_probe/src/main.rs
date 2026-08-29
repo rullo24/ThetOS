@@ -27,7 +27,7 @@ extern "C" fn dummy_task(_arg: *mut ()) -> ! {
 #[entry]
 fn app_main() -> ! {
     let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
-    let mut system = System::new_with_pool(p_stack_pool);
+    let mut system = System::new_with_pool(p_stack_pool).unwrap();
 
     // single task -> reschedule always reselects it, so PendSV never fires (safe before #40 lands)
     system
