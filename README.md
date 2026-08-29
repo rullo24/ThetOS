@@ -6,10 +6,6 @@ An investigation into compile-time safety invariants and zero-cost modularity fo
 
 > Current industry-standard RTOS architectures (typically C-based) lack the ability to enforce memory safety and hardware-state invariants at compile-time, resulting in runtime failures that are difficult to detect and debug. This thesis seeks to prove that a modular RTOS developed in Rust, utilising static dispatch and the typestate pattern, can eliminate these failure modes at the compilation stage without incurring a noticeable performance penalty compared to a C-based equivalent.
 
-## Status
-
-This is the v1.0.0 release: the kernel, scheduler, and a typestate GPIO driver, proven on hardware on one board, and consumable by external firmware projects. Further peripherals are future work. See [`docs/scope.md`](docs/scope.md) for what is delivered and what is deferred, and [`docs/decisions/`](docs/decisions/) for the reasoning behind each design choice.
-
 ## Implementation constraints
 
 Set to keep the safety claims meaningful:
@@ -65,9 +61,3 @@ A firmware project outside this workspace depends on the entry-macro crate and a
 **Static dispatch.** No `dyn Trait`. The kernel is generic over its hardware dependencies; monomorphisation inlines the concrete implementations, so the generated code matches a hand-written target-specific kernel.
 
 **Compile-time invariant enforcement.** Hardware states are encoded in the type system, so a class of runtime logic errors — using a peripheral in the wrong state — becomes a build failure instead.
-
-## Evaluation criteria
-
-1. Safety robustness versus a C equivalent.
-2. Context-switch latency.
-3. Binary footprint in a constrained target.
