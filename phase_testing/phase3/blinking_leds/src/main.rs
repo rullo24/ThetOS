@@ -6,7 +6,7 @@ use core::panic::PanicInfo;
 use core::ptr::{addr_of_mut, null_mut};
 
 // USER INCLUDES
-use entry::entry;
+use thetos_entry::entry;
 use nucleo_l152re::{system, System, PA5};
 use specs::bsp::{GpioLevel, OutputPin, OutputStyle, UninitPin};
 use specs::common::TaskId;

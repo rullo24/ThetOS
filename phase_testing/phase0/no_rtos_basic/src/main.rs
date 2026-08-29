@@ -5,7 +5,7 @@
 use core::panic::PanicInfo;
 
 // local imports
-use entry::entry;
+use thetos_entry::entry;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {

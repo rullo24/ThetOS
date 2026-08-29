@@ -9,7 +9,7 @@ build = "../../../.cargo/build.rs"
 name = "p2_stack_guard"
 
 [dependencies]
-entry = { path = "../../../macros/entry" }
+thetos_entry = { path = "../../../macros/thetos_entry" }
 nucleo_l152re = { path = "../../../bsp/nucleo/nucleo_l152re" }
 cortex_m = { path = "../../../arch/cortex-m" }
 specs = { workspace = true }

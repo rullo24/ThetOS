@@ -10,7 +10,7 @@ use core::ptr::{addr_of_mut, null_mut};
 use cortex_m::common::interrupts::enable_interrupts;
 use cortex_m::v7m::{set_current_task_tcb, set_next_task_psp, V7mTaskContext};
 use cortex_m::V7mContextSwitch;
-use entry::entry;
+use thetos_entry::entry;
 use nucleo_l152re as _;
 use specs::arch::ContextSwitch;
 

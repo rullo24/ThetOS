@@ -6,7 +6,7 @@ use core::panic::PanicInfo;
 use core::ptr::addr_of_mut;
 
 // local imports
-use entry::entry;
+use thetos_entry::entry;
 use nucleo_l152re::System;
 use cortex_m::common::interrupts::{disable_interrupts, enable_interrupts};
 

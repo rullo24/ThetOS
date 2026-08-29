@@ -7,7 +7,7 @@ use core::ptr::{addr_of_mut, null_mut};
 
 // local imports
 use specs::arch::ContextSwitch;
-use entry::entry;
+use thetos_entry::entry;
 use cortex_m::V7mContextSwitch;
 use cortex_m::v7m::{set_current_task_tcb, set_next_task_psp};
 use nucleo_l152re as _;

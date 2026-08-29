@@ -7,14 +7,14 @@ resolver = "2"
 
 # Builds RTOS lib for target provided
 default-members = [
-    "macros/entry",
+    "macros/thetos_entry",
     "specs",
     "kernel",
 ]
 
 # Builds **EXAMPLES** using the RTOS lib
 members = [
-    "macros/entry",
+    "macros/thetos_entry",
     "specs",
     "kernel",
     "arch/cortex-m",

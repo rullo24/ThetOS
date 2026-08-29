@@ -9,7 +9,7 @@ use core::ptr::write_volatile;
 // local imports
 use cortex_m::CortexMStackGuard;
 use cortex_m::common::interrupts::enable_interrupts;
-use entry::entry;
+use thetos_entry::entry;
 use nucleo_l152re as _;
 use specs::arch::{
     StackGuard,
