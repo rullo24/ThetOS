@@ -100,7 +100,3 @@ The pattern: build `System` from a stack pool, `spawn_task` each entry function 
 Build with `cargo build`. Flash the resulting ELF with OpenOCD (ST-Link interface, STM32L1 target), pointing `-s` at your OpenOCD scripts directory. Flashing is done on the host, not inside a container.
 
 `scripts/` in the ThetOS repo automate build/flash/debug for in-tree packages; an external project either copies them or calls OpenOCD directly.
-
-## What the board crate re-exports
-
-The board crate re-exports everything application code needs: the system handle and its task-control functions, the task identifier and priority types, and the full GPIO surface (pin handles, the pin type, direction markers, level and configuration enums, and the pin traits). Consult the board crate's `lib.rs` for the current list.
