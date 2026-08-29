@@ -35,7 +35,9 @@ impl FppScheduler {
     }
 
     /// DESCRIPTION
-    /// convert priority to index for ready queue array
+    /// convert priority to index for ready queue array -> always in 0..PRIORITY_LEVELS
+    /// since TaskPriority is validated to MIN..=MAX at construction and the const assert
+    /// above pins PRIORITY_LEVELS == MAX - MIN + 1, so ready_queues[idx] cannot go out of bounds.
     fn priority_index(priority: TaskPriority) -> usize {
         (priority.as_u8() - TaskPriority::MIN) as usize
     }

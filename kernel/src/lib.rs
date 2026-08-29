@@ -231,8 +231,12 @@ where
         entry_point: extern "C" fn(*mut ()) -> !,
         entry_arg: *mut (),
     ) -> Result<()> {
+        // sole gate on an externally-supplied TaskId: both spawn_task and spawn_idle_task
+        // funnel through here, so rejecting an out-of-range id now makes every later
+        // `tcb_list[idx]` / `stack_guard_slots[idx]` (here and in reschedule / wake /
+        // yield / set_task_state) safe by construction -- stored ids can only be in range.
         let idx: usize = task_id.0 as usize;
-        if idx >= self.stack_resources.stack_guard_slots.len() {
+        if idx >= self.stack_resources.stack_guard_slots.len() || idx >= self.tcb_list.len() {
             return Err(KernelError::InvalidConfig);
         }
 
