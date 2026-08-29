@@ -7,8 +7,8 @@ target = "thumbv7m-none-eabi"
 
 [target.thumbv7m-none-eabi]
 rustflags = [
-    "-C", "link-arg=-Tmcu/stm32/stm32l152ret6/memory.x", # MCU-specific memory map
-    "-C", "link-arg=-Tarch/cortex-m/src/common/common_minimal.ld", # common linker script (must be called second)
+    "-C", "link-arg=-Tmemory.x", # MCU-specific memory map (shipped by the mcu crate's build.rs)
+    "-C", "link-arg=-Tcommon_minimal.ld", # common linker script, must be second (shipped by arch/cortex-m build.rs)
 ]
 
 [thetos]
