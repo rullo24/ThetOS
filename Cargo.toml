@@ -30,6 +30,7 @@ members = [
     "phase_testing/phase3/all_tasks_delay_demo",
     "phase_testing/phase3/five_task_priority_demo",
     "phase_testing/phase3/blinking_leds",
+    "phase_testing/phase3/double_gpio_toggle",
 ]
 
 [workspace.dependencies]
