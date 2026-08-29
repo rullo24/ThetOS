@@ -69,7 +69,7 @@ Phase 3 demos live under `phase_testing/phase3/` (workspace package name is the 
 |--------|------|
 | `double_gpio_toggle` | **Roadmap Gatekeeper 3**: two same-priority tasks toggling **PA6** and **PA7** independently under the scheduler. |
 | `blinking_leds` | Single-task GPIO bring-up: one task toggling **PA5** (LD2) via `delay_ms`. |
-| `multi_task_auto` | Three same-priority tasks, no delays — round-robin selection (`COUNTER_A/B/C` advance together). |
+| `multi_task_auto` | Three same-priority tasks, no delays — FIFO / round-robin within one priority level (`COUNTER_A/B/C` advance together). |
 | `five_task_priority_demo` | Five tasks across priorities 0/7/15/23/31 — strict fixed-priority ordering, `delay_ms` opens windows for lower tiers. |
 | `priority_delay_demo` | Three tasks (0/15/31) — `delay_ms` on the higher tiers lets the lowest, never-delaying task run. |
 | `all_tasks_delay_demo` | Two same-priority tasks both sleeping — exercises the idle-task fallback (see note below). |

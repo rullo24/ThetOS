@@ -24,7 +24,7 @@ Already present:
 Missing for Phase 3 completion:
 
 - **Real ready-list semantics** (add / remove / select-next) protected by `CriticalSection`.
-- **Scheduler policy** aligned with thesis roadmap (**round-robin** unless you explicitly choose otherwise and update the roadmap).
+- **Scheduler policy**: fixed-priority preemptive (`FppScheduler`); see [docs/decisions/0004-fpp-scheduler.md](../decisions/0004-fpp-scheduler.md).
 - **`SystemTimer` (or equivalent) trait** in `specs/` and a **board/arch** implementation driving periodic **tick → scheduler**.
 - **End-to-end hardware demo**: **Gatekeeper 3** — two tasks, distinct GPIO (or equivalent observable outputs), no races (see evidence section).
 
@@ -38,7 +38,7 @@ Missing for Phase 3 completion:
 - **Atomicity model:** kernel data structures updated only inside `CriticalSection::with_execute` (or equivalent) on targets where preemptive interrupts exist.
 - **Dependency direction:** unchanged vs [docs/roadmap.md](../roadmap.md) architecture boundaries.
 - **Scheduler location:** policy and ready list live in `kernel/`; `arch/` supplies `ContextSwitch`, `CriticalSection` impl, and interrupt/timer mechanics as declared by traits.
-- **Naming note:** the tree currently contains **`FppScheduler`**. The roadmap calls for a **round-robin** scheduler; either **implement round-robin** (new type or evolve the scheduler module) or **update the roadmap** to fixed-priority if that is the deliberate thesis choice—do not leave the mismatch unowned.
+- **Scheduler policy note:** the tree ships **`FppScheduler`** (fixed-priority preemptive). This is the deliberate thesis choice, superseding the round-robin plan in earlier drafts; rationale and alternatives in [docs/decisions/0004-fpp-scheduler.md](../decisions/0004-fpp-scheduler.md). Equal-priority tasks are still served FIFO (round-robin within a level).
 
 ---
 
@@ -50,10 +50,10 @@ Missing for Phase 3 completion:
    - Done when unit tests can add/remove/select without mocks violating ordering assumptions.
 
 2. **Expand `SchedulerPolicy` (or split traits) as needed**
-   - Beyond `on_task_spawn`, add operations required for round-robin: e.g. **enqueue**, **dequeue next**, **notify ready**—exact surface is a design choice but must be **testable** on the host.
+   - Beyond `on_task_spawn`, add the operations the policy needs: e.g. **enqueue**, **dequeue next**, **notify ready**—exact surface is a design choice but must be **testable** on the host.
    - Done when the trait expresses the policy the kernel calls from `yield_now` / tick path.
 
-3. **Implement round-robin (or approved policy) in `kernel/`**
+3. **Implement the fixed-priority preemptive policy in `kernel/`**
    - Wire `on_task_spawn`, selection on yield/tick, and interaction with **`curr_task`** / `Kernel` state.
    - Done when host tests show deterministic ordering for a known sequence of spawns and yields (mock time if needed).
 

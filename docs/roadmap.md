@@ -104,7 +104,7 @@ To ensure the academic validity of the thesis, the following boundaries are esta
     * **Develop the TaskControlBlock (TCB)**: Define a generic structure to store stack pointers and task states.
     * **Implement Critical Section Abstraction**: Define a `CriticalSection` trait in `specs/` using closure-based execution (`enter<F, R>(f: F)`) for atomic access.
     * **Implement Architecture-Specific Atomics**: Implement `CriticalSection` in `arch/` using global interrupt disabling (e.g., `cpsid i` / `cpsie i`).
-    * **Develop Generic Round-Robin Scheduler**: Implement scheduling logic in `kernel/` utilising the `CriticalSection` trait to protect the Ready List.
+    * **Develop Generic Fixed-Priority Preemptive Scheduler**: Implement scheduling logic in `kernel/` utilising the `CriticalSection` trait to protect the Ready List. Policy rationale: [docs/decisions/0004-fpp-scheduler.md](decisions/0004-fpp-scheduler.md).
     * **Integrate System Heartbeat**: Utilise the generic `SystemTimer` trait to trigger the scheduler via an interrupt-driven tick.
 * **Deliverables:**
     * **The Scheduler Object**: A hardware-blind orchestration structure managing a collection of `TCBs`.

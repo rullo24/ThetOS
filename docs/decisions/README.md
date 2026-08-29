@@ -9,7 +9,7 @@ Supersede, do not edit: a reversed decision gets a new ADR; the old one's `Statu
 | [0001](0001-static-dispatch.md) | Static dispatch, generic kernel | Accepted |
 | [0002](0002-crate-boundaries.md) | Crate boundaries and dependency direction | Accepted |
 | [0003](0003-manual-drivers.md) | Manual peripheral drivers, no HAL | Accepted |
-| [0004](0004-fpp-scheduler.md) | Fixed-priority preemptive scheduler | Accepted (supersedes round-robin wording; #38) |
+| [0004](0004-fpp-scheduler.md) | Fixed-priority preemptive scheduler | Accepted (supersedes round-robin plan) |
 | [0005](0005-blocking-and-idle-task.md) | Blocked state + idle task, not busy-wait | Accepted |
 | [0006](0006-debug-tick-rate.md) | 100 Hz SysTick on debug builds | Accepted |
 | [0007](0007-typestate-driver-api.md) | Typestate drivers, infallible GPIO API | Accepted |

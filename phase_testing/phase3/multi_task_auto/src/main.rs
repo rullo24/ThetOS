@@ -47,7 +47,7 @@ fn app_main() -> ! {
     let p_stack_pool = unsafe { &mut *addr_of_mut!(STACK_POOL) };
     let mut system = System::new_with_pool(p_stack_pool);
 
-    // spawn 3x same-priority tasks -> demonstrates plain round-robin scheduling
+    // spawn 3x same-priority tasks -> round-robin among equal-priority tasks (FPP with one priority level)
     system
         .spawn_task(TaskId(1), TaskPriority::default(), 1024, task_a, null_mut())
         .unwrap();

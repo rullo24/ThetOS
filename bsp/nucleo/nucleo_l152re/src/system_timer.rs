@@ -58,7 +58,7 @@ impl SystemTimer for NucleoSystemTimer {
     }
 
     /// DESCRIPTION
-    /// every tick requests a reschedule -> simplest correct policy for Gatekeeper 3's round-robin demo
+    /// every tick requests a reschedule -> simplest correct tick policy for this board
     fn on_tick_interrupt(&mut self) -> Result<TickAction, Self::Error> {
         Ok(TickAction::RequestReschedule)
     }
