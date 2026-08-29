@@ -229,14 +229,16 @@ impl System {
     /// DESCRIPTION
     /// start the system runtime. call once, after all tasks are spawned -> installs the tick source and starts SysTick, so no tick can land before init is complete. consumes `self` because this never returns.
     pub fn run(self) -> ! {
-        // set SysTick callback
+        // move self into the static and take the &'static mut back in one step (insert returns it)
         let system: &'static mut System = unsafe {
-            SYSTEM = Some(self);
+            let s = (*addr_of_mut!(SYSTEM)).insert(self);
             set_tick_callback(on_systick_tick);
-            (*addr_of_mut!(SYSTEM)).as_mut().unwrap()
+            s
         };
 
         // start SysTick and dispatch into the first task (initialisation now complete)
+        // unreachable in a correct build: the idle task guarantees a runnable first task.
+        // run() is -> !, so expect() is the only boot diagnostic available here.
         system.kernel.start().expect("kernel start failed");
 
         loop {
