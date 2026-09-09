@@ -33,6 +33,11 @@ members = [
     "phase_testing/phase3/double_gpio_toggle",
 ]
 
+# Shared package metadata -> members opt in with `field.workspace = true`
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+
 [workspace.dependencies]
 toml = "0.8"
 specs = { path = "specs" }

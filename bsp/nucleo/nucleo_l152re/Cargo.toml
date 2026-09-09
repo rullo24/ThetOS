@@ -1,7 +1,7 @@
 [package]
 name = "nucleo_l152re"
-version = "1.0.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Board support for STM Nucleo-L152RE."
 
 [dependencies]

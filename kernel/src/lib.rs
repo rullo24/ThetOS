@@ -31,7 +31,7 @@ const DEFAULT_STACK_CANARY_WORD: u32 = 0xDEADBEEF;
 #[inline]
 fn align_up(n: usize, align: usize) -> usize {
     debug_assert!(align > 0);
-    return (n + align - 1) / align * align;
+    (n + align - 1) / align * align
 }
 
 /// DESCRIPTION
@@ -139,7 +139,7 @@ where
         stack_resources: KernelStackResources<StackGuardImpl>,
         system_timer: SystemTimerType,
     ) -> Self {
-        return Self {
+        Self {
             ctx_switch,
             crit_section,
             scheduler,
@@ -149,7 +149,7 @@ where
             stack_cursor: 0x0,
             stack_resources,
             tcb_list: core::array::from_fn(|_| None), // initialise all TCBs to None
-        };
+        }
     }
 
     /// DESCRIPTION
@@ -178,7 +178,7 @@ where
         let cursor_aligned = align_up(self.stack_cursor, align);
         if cursor_aligned
             .checked_add(aligned_size)
-            .map_or(true, |end| end > self.stack_resources.stack_pool.len())
+            .is_none_or(|end| end > self.stack_resources.stack_pool.len())
         {
             return Err(KernelError::InvalidConfig);
         }
@@ -191,7 +191,14 @@ where
             .wrapping_add(cursor_aligned);
         let stack_top = stack_limit.wrapping_add(aligned_size);
 
-        self.spawn_task_with_stack(task_id, priority, stack_top, stack_limit, entry_point, entry_arg)?;
+        self.spawn_task_with_stack(
+            task_id,
+            priority,
+            stack_top,
+            stack_limit,
+            entry_point,
+            entry_arg,
+        )?;
 
         // advance cursor for next spawn -> only once the spawn above actually succeeded
         self.stack_cursor = cursor_aligned + aligned_size;
@@ -317,7 +324,7 @@ where
         // current one. The switch happens at the next reschedule (tick or
         // yield), or -> for the very first task -> via Kernel::start().
 
-        return Ok(()); // success
+        Ok(()) // success
     }
 
     /// DESCRIPTION
@@ -509,7 +516,7 @@ where
     /// DESCRIPTION
     /// get the currently processes task
     pub fn get_current_task(&self) -> Option<TaskId> {
-        return self.curr_task;
+        self.curr_task
     }
 
     /// DESCRIPTION
@@ -523,7 +530,7 @@ where
     /// DESCRIPTION
     /// return the num of tasks registered
     pub fn get_task_count(&self) -> usize {
-        return self.task_count;
+        self.task_count
     }
 
     /// DESCRIPTION
@@ -533,7 +540,7 @@ where
         Op: FnOnce(&mut Self) -> Res, // called at least once before return
     {
         let crit = self.crit_section;
-        return crit.with_execute(|| operation(self));
+        crit.with_execute(|| operation(self))
     }
 
     /// DESCRIPTION

@@ -1,7 +1,7 @@
 [package]
 name = "thetos_entry"
-version = "1.0.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Macro for abstracting ThetOS firmware entry (e.g. #[entry])."
 
 [lib]

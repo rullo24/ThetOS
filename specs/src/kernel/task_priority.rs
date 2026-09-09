@@ -14,7 +14,7 @@ impl TaskPriority {
     /// DESCRIPTION
     /// creates a priority if the value is within supported bounds
     pub const fn new(level: u8) -> Result<Self> {
-        if level < Self::MIN || level > Self::MAX {
+        if level > Self::MAX {
             return Err(KernelError::InvalidPriority);
         }
         Ok(Self(level))
@@ -28,11 +28,9 @@ impl TaskPriority {
 }
 
 impl Default for TaskPriority {
-    
     /// DESCRIPTION
     /// returns the default priority
     fn default() -> Self {
         Self::DEFAULT
     }
-
 }

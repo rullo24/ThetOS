@@ -10,7 +10,7 @@ pub enum TickAction {
 
 /// kernel-facing timer contract for tick to reschedule tasks
 pub trait SystemTimer {
-    type Error: Debug; /// error type for timer operations.
+    type Error: Debug; // error type for timer operations.
 
     /// DESCRIPTION
     /// configure timer cadence in hardware ticks
@@ -39,5 +39,4 @@ pub trait SystemTimer {
     /// DESCRIPTION
     /// handle timer interrupt and report scheduler action
     fn on_tick_interrupt(&mut self) -> Result<TickAction, Self::Error>;
-    
 }

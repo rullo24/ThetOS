@@ -3,18 +3,13 @@ use heapless::Deque;
 
 // local imports
 use specs::common::TaskId;
-use specs::kernel::{
-    KernelError,
-    Result,
-    SchedulerPolicy, 
-    TaskPriority,
-};
+use specs::kernel::{KernelError, Result, SchedulerPolicy, TaskPriority};
 
 // constants
 const PRIORITY_LEVELS: usize = TaskPriority::TASK_LEVELS; // check priority range -> not matching specs/ will cause silent bugs or UB
-const _: () = assert!(TaskPriority::MAX >= TaskPriority::MIN);
 const _: () = assert!(PRIORITY_LEVELS > 0);
-const _: () = assert!(PRIORITY_LEVELS == (TaskPriority::MAX as usize) - (TaskPriority::MIN as usize) + 1);
+const _: () =
+    assert!(PRIORITY_LEVELS == (TaskPriority::MAX as usize) - (TaskPriority::MIN as usize) + 1);
 const READY_QUEUE_CAPACITY: usize = 8; // arbitrary capacity for ready queue
 
 /// DESCRIPTION
@@ -24,7 +19,6 @@ pub struct FppScheduler {
 }
 
 impl FppScheduler {
-
     /// DESCRIPTION
     /// create a new fixed-priority preemptive scheduler instance
     pub const fn new() -> Self {
@@ -44,7 +38,7 @@ impl FppScheduler {
 
     /// DESCRIPTION
     /// enqueue task into ready queue for given priority
-    fn enqueue_internal(&mut self, task_id: TaskId, priority: TaskPriority) -> Result<()>{
+    fn enqueue_internal(&mut self, task_id: TaskId, priority: TaskPriority) -> Result<()> {
         let idx = Self::priority_index(priority);
         let queue = &mut self.ready_queues[idx];
         queue
@@ -58,20 +52,24 @@ impl FppScheduler {
     fn dequeue_highest_internal(&mut self) -> Option<TaskId> {
         // starting at highest priority (0) -> lowest (PRIORITY_LEVELS - 1)
         for idx in 0..PRIORITY_LEVELS {
-            
             // if avail in current priority queue -> return task id
             if let Some(task_id) = self.ready_queues[idx].pop_front() {
                 return Some(task_id);
             }
-
         }
-        return None;
+        None
     }
+}
 
+impl Default for FppScheduler {
+    /// DESCRIPTION
+    /// same as new() -> an empty scheduler
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SchedulerPolicy for FppScheduler {
-    
     /// DESCRIPTION
     /// register task spawn into scheduler state
     fn register_task(&mut self, task_id: TaskId, priority: TaskPriority) -> Result<()> {
@@ -87,12 +85,16 @@ impl SchedulerPolicy for FppScheduler {
     /// DESCRIPTION
     /// choose next runnable task according to policy ordering.
     fn select_next_runnable(&mut self) -> Option<TaskId> {
-        return self.dequeue_highest_internal();
+        self.dequeue_highest_internal()
     }
 
     /// DESCRIPTION
     /// decide whether candidate should preempt current under policy rules.
-    fn should_preempt_current(&self, current: Option<(TaskId, TaskPriority)>, candidate: (TaskId, TaskPriority)) -> bool {
+    fn should_preempt_current(
+        &self,
+        current: Option<(TaskId, TaskPriority)>,
+        candidate: (TaskId, TaskPriority),
+    ) -> bool {
         let candidate_priority: u8 = candidate.1.as_u8(); // capture TaskPriority item
 
         match current {
@@ -100,8 +102,7 @@ impl SchedulerPolicy for FppScheduler {
             Some((_, current_priority)) => {
                 // priority convention -> lower val is higher priority
                 candidate_priority < current_priority.as_u8()
-            },
+            }
         }
     }
-
 }

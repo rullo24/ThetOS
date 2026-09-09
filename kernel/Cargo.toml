@@ -4,8 +4,8 @@
 
 [package]
 name = "kernel"
-version = "1.0.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 specs = { workspace = true }
