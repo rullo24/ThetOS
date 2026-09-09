@@ -8,8 +8,10 @@ pub mod gpio;
 pub mod limits;
 pub mod system;
 pub mod system_timer;
+pub mod uart;
 
 pub use gpio::*; // all GPIO pins + the board-facing GPIO contract
+pub use uart::{Parity, Serial, StopBits, Uart, UartConfig, UartError, UninitUart};
 pub use limits::MAX_TASKS;
 pub use system::{System, SystemInitError};
 pub use system_timer::NucleoSystemTimer;
