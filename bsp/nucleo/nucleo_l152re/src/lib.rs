@@ -3,6 +3,7 @@
 // link against MCU startup & vector table
 use stm32l152ret6 as _;
 
+pub mod clock;
 pub mod gpio;
 pub mod limits;
 pub mod system;
