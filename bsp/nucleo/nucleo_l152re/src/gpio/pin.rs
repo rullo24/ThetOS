@@ -2,8 +2,8 @@ use core::marker::PhantomData;
 use core::ptr::{read_volatile, write_volatile};
 
 use specs::bsp::gpio::{
-    GpioLevel, Input, InputPin, Output, OutputPin, OutputStyle, PinMode, PullState, Uninit,
-    UninitPin,
+    Alternate, GpioLevel, Input, InputPin, Output, OutputPin, OutputStyle, PinMode, PullState,
+    Uninit, UninitPin,
 };
 
 use super::port::GpioPort;
@@ -11,14 +11,14 @@ use super::port::GpioPort;
 // GPIO register field encodings, identical for every port | Ref: RM0038 rev 18 ch.7
 const MODER_INPUT: u32 = 0b00; // GPIOx_MODER field: input mode | s7.4.1
 const MODER_OUTPUT: u32 = 0b01; // GPIOx_MODER field: general purpose output mode | s7.4.1
+const MODER_ALTERNATE: u32 = 0b10; // GPIOx_MODER field: alternate function mode | s7.4.1
 const PUPDR_NONE: u32 = 0b00; // GPIOx_PUPDR field: no pull-up / pull-down | s7.4.4
 const PUPDR_UP: u32 = 0b01; // GPIOx_PUPDR field: pull-up | s7.4.4
 const PUPDR_DOWN: u32 = 0b10; // GPIOx_PUPDR field: pull-down | s7.4.4
-const TWO_BIT_MASK: u32 = 0b11; // width of one MODER / PUPDR field (2 bits per pin)
-                                // GPIOx_OTYPER: 0 = push-pull, 1 = open-drain, 1 bit per pin | s7.4.2
-                                // GPIOx_OSPEEDR: left at reset (00 = low speed), adequate for on/off signalling | s7.4.3
-                                // GPIOx_BSRR: low half sets ODR, high half (bit + 16) resets ODR, write-only | s7.4.7
-                                // GPIOx_IDR: one read-only bit per pin | s7.4.5
+                              // GPIOx_OTYPER: 0 = push-pull, 1 = open-drain, 1 bit per pin | s7.4.2
+                              // GPIOx_OSPEEDR: left at reset (00 = low speed), adequate for on/off signalling | s7.4.3
+                              // GPIOx_BSRR: low half sets ODR, high half (bit + 16) resets ODR, write-only | s7.4.7
+                              // GPIOx_IDR: one read-only bit per pin | s7.4.5
 
 pub struct Pin<PORT: GpioPort, const PIN_INDEX: u8, MODE: PinMode> {
     _marker: PhantomData<(PORT, MODE)>,
@@ -44,6 +44,29 @@ impl<PORT: GpioPort, const PIN_INDEX: u8> Pin<PORT, PIN_INDEX, Uninit> {
     pub const fn new() -> Self {
         assert!(PIN_INDEX < 16, "GPIO pin index must be sub-16");
         Self {
+            _marker: PhantomData,
+        }
+    }
+
+    /// DESCRIPTION
+    /// route the pin to an on-chip peripheral (af = 0..16); consumed by uart / pwm, not app code
+    pub fn into_alternate(self, af: u8) -> Pin<PORT, PIN_INDEX, Alternate> {
+        debug_assert!(af < 0b1111, "alternate function number must be sub-16"); // see RM0038 7.4.9/7.4.10
+        Self::enable_clk();
+        let field = (PIN_INDEX as u32) * 2;
+        let afr_shift = ((PIN_INDEX as u32) % 8) * 4;
+        let afr = if PIN_INDEX < 8 {
+            PORT::AFRL
+        } else {
+            PORT::AFRH
+        };
+        unsafe {
+            let curr_afr = read_volatile(afr) & !(0b1111 << afr_shift);
+            write_volatile(afr, curr_afr | (((af as u32) & 0b1111) << afr_shift));
+            let curr_moder = read_volatile(PORT::MODER) & !(0b11 << field);
+            write_volatile(PORT::MODER, curr_moder | (MODER_ALTERNATE << field));
+        }
+        Pin {
             _marker: PhantomData,
         }
     }
@@ -76,9 +99,9 @@ impl<PORT: GpioPort, const PIN_INDEX: u8> UninitPin for Pin<PORT, PIN_INDEX, Uni
             PullState::PullUp => PUPDR_UP,
         };
         unsafe {
-            let curr_moder = read_volatile(PORT::MODER) & !(TWO_BIT_MASK << field);
+            let curr_moder = read_volatile(PORT::MODER) & !(0b11 << field);
             write_volatile(PORT::MODER, curr_moder | (MODER_INPUT << field));
-            let curr_pupdr = read_volatile(PORT::PUPDR) & !(TWO_BIT_MASK << field);
+            let curr_pupdr = read_volatile(PORT::PUPDR) & !(0b11 << field);
             write_volatile(PORT::PUPDR, curr_pupdr | (pupd << field));
         }
         Pin {
@@ -100,7 +123,7 @@ impl<PORT: GpioPort, const PIN_INDEX: u8> UninitPin for Pin<PORT, PIN_INDEX, Uni
                 OutputStyle::OpenDrain => curr_otyper | (1u32 << bit),
             };
             write_volatile(PORT::OTYPER, curr_otyper);
-            let curr_moder = read_volatile(PORT::MODER) & !(TWO_BIT_MASK << field);
+            let curr_moder = read_volatile(PORT::MODER) & !(0b11 << field);
             write_volatile(PORT::MODER, curr_moder | (MODER_OUTPUT << field));
         }
         Pin {

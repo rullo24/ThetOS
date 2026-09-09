@@ -3,20 +3,23 @@ mod sealed {
     pub trait Sealed {}
 }
 
-// typestate marke
+// typestate marker
 pub trait PinMode: sealed::Sealed {}
 
-// direction markers
-pub struct Uninit; // no direction (pre-config state)
+// pin mode markers
+pub struct Uninit; // no mode chosen (pre-config state)
 pub struct Input;
 pub struct Output;
+pub struct Alternate; // driven by an on-chip peripheral, not application code
 
 impl sealed::Sealed for Uninit {}
 impl sealed::Sealed for Input {}
 impl sealed::Sealed for Output {}
+impl sealed::Sealed for Alternate {}
 impl PinMode for Uninit {}
 impl PinMode for Input {}
 impl PinMode for Output {}
+impl PinMode for Alternate {}
 
 // logic level of a GPIO line
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

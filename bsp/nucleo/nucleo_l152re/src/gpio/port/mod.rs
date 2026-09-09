@@ -17,6 +17,8 @@ pub trait GpioPort {
     const PUPDR: *mut u32; // internal resistor state
     const IDR: *const u32; // read-only, current input levels
     const BSRR: *mut u32; // atomic set/reset for pin writes
+    const AFRL: *mut u32; // alternate function select, pins 0..7 | RM0038 7.4.9
+    const AFRH: *mut u32; // alternate function select, pins 8..15 | RM0038 7.4.10
     const RCC_ENABLE: RccEnable;
 }
 
@@ -30,6 +32,8 @@ macro_rules! define_port {
             const PUPDR: *mut u32 = ($base + 0x0C) as *mut u32;
             const IDR: *const u32 = ($base + 0x10) as *const u32;
             const BSRR: *mut u32 = ($base + 0x18) as *mut u32;
+            const AFRL: *mut u32 = ($base + 0x20) as *mut u32;
+            const AFRH: *mut u32 = ($base + 0x24) as *mut u32;
             const RCC_ENABLE: $crate::gpio::port::RccEnable = $crate::gpio::port::RccEnable {
                 reg: $crate::gpio::port::RCC_AHBENR,
                 bit: $bit,
