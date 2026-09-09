@@ -1,0 +1,16 @@
+[package]
+name = "uart_echo"
+version.workspace = true
+edition.workspace = true
+build = "../../../.cargo/build.rs"
+
+[[bin]]
+name = "uart_echo"
+
+[dependencies]
+thetos_entry = { path = "../../../macros/thetos_entry" }
+nucleo_l152re = { path = "../../../bsp/nucleo/nucleo_l152re" }
+cortex_m = { path = "../../../arch/cortex-m" }
+
+[build-dependencies]
+toml = { workspace = true }

@@ -74,9 +74,9 @@ impl UninitUart for Serial<Uninit> {
                 read_volatile(RCC_APB1ENR) | RCC_APB1ENR_USART2EN,
             );
 
-            // BRR holds USARTDIV as 12.4 fixed point when OVER8 = 0 -> round(16 * fCK / baud)
-            let brr = (16 * PCLK1_HZ as u64 + config.baud as u64 / 2) / config.baud as u64;
-            write_volatile(USART2_BRR, brr as u32);
+            // BRR is USARTDIV in 12.4 fixed point (OVER8 = 0) -> its integer value is fCK / baud
+            let brr = (PCLK1_HZ + config.baud / 2) / config.baud;
+            write_volatile(USART2_BRR, brr);
 
             let cr2 = match config.stop {
                 StopBits::One => 0,
