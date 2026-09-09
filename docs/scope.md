@@ -17,6 +17,12 @@ The thesis question: can a modular RTOS in Rust enforce memory-safety and hardwa
 
 Rationale and rejected alternatives for each of these are in [`decisions/`](decisions/).
 
+## Since v1.0.0
+
+Work resumed after the thesis tag to add peripherals for the RC-car demonstration. Each lands with its own decision record and hardware runbook; these are outside the thesis scope fixed in [`decisions/0013-v1-scope.md`](decisions/0013-v1-scope.md).
+
+- A typestate UART driver on the board's debug-probe serial port, polled, owned by a single task. See [`decisions/0014-uart-driver.md`](decisions/0014-uart-driver.md).
+
 ## Architecture boundaries (authoritative)
 
 - **`kernel/`** owns hardware-blind orchestration only: task lifecycle, scheduler-policy invocation, kernel state transitions, the safe core API. Never register-level or board-specific code.

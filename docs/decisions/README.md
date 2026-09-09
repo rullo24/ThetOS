@@ -19,3 +19,4 @@ Supersede, do not edit: a reversed decision gets a new ADR; the old one's `Statu
 | [0011](0011-external-import.md) | External projects import ThetOS by git; linker scripts self-locate | Accepted |
 | [0012](0012-flat-consumer-api.md) | Flat consumer API — `thetos_entry` + one board crate | Accepted |
 | [0013](0013-v1-scope.md) | v1.0.0 scope — kernel proven, GPIO only | Accepted |
+| [0014](0014-uart-driver.md) | UART driver, polled and single-owner | Accepted |
