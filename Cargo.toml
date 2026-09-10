@@ -32,6 +32,7 @@ members = [
     "phase_testing/phase3/blinking_leds",
     "phase_testing/phase3/double_gpio_toggle",
     "phase_testing/phase4/uart_echo",
+    "phase_testing/phase4/pwm_fade",
 ]
 
 # Shared package metadata -> members opt in with `field.workspace = true`
