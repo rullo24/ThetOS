@@ -98,7 +98,7 @@ fn parse_bsp_attr(attr: TokenStream) -> Result<String, &'static str> {
         return Err("entry: invalid `bsp` crate name");
     }
 
-    return Ok(name);
+    Ok(name)
 }
 
 /// DESCRIPTION
@@ -132,19 +132,19 @@ fn fn_name_after_keyword_fn(item: &TokenStream) -> Option<String> {
             }
         }
     }
-    return None;
+    None
 }
 
 /// DESCRIPTION
 /// compares an `Ident` to a string -> use strings because stable Rust has no `Ident == &str`.
 fn ident_matches(i: &Ident, s: &str) -> bool {
-    return i.to_string() == s;
+    i.to_string() == s
 }
 
 /// DESCRIPTION
 /// parse Rust source snippet to tokens
 fn parse_tokens(src: &str) -> Option<TokenStream> {
-    return src.parse().ok();
+    src.parse().ok()
 }
 
 /// DESCRIPTION

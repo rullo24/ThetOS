@@ -31,7 +31,7 @@ const DEFAULT_STACK_CANARY_WORD: u32 = 0xDEADBEEF;
 #[inline]
 fn align_up(n: usize, align: usize) -> usize {
     debug_assert!(align > 0);
-    (n + align - 1) / align * align
+    n.div_ceil(align) * align
 }
 
 /// DESCRIPTION
