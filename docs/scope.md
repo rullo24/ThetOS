@@ -22,6 +22,7 @@ Rationale and rejected alternatives for each of these are in [`decisions/`](deci
 Work resumed after the thesis tag to add peripherals for the RC-car demonstration. Each lands with its own decision record and hardware runbook; these are outside the thesis scope fixed in [`decisions/0013-v1-scope.md`](decisions/0013-v1-scope.md).
 
 - A typestate UART driver on the board's debug-probe serial port, polled, owned by a single task. See [`decisions/0014-uart-driver.md`](decisions/0014-uart-driver.md).
+- A typestate PWM driver: one hardware timer owns its channels, frequency fixed at activation, normalised duty per channel. See [`decisions/0015-pwm-driver.md`](decisions/0015-pwm-driver.md).
 
 ## Architecture boundaries (authoritative)
 
