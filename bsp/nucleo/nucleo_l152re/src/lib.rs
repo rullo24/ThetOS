@@ -6,11 +6,13 @@ use stm32l152ret6 as _;
 pub mod clock;
 pub mod gpio;
 pub mod limits;
+pub mod pwm;
 pub mod system;
 pub mod system_timer;
 pub mod uart;
 
 pub use gpio::*; // all GPIO pins + the board-facing GPIO contract
+pub use pwm::{Channel, Pwm, PwmChannel, PwmConfig, PwmTimer, Tim2, Tim3, UninitPwm};
 pub use uart::{Parity, Serial, StopBits, Uart, UartConfig, UartError, UninitUart};
 pub use limits::MAX_TASKS;
 pub use system::{System, SystemInitError};

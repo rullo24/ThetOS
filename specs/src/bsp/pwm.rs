@@ -26,12 +26,9 @@ impl Default for PwmConfig {
     }
 }
 
-/// DESCRIPTION
-/// a running PWM timebase -> the board crate adds the per-channel accessors that consume pins
-pub trait Pwm {}
-
 pub trait UninitPwm {
-    type Active: Pwm;
+    // the running timebase; the board crate adds the per-channel accessors that consume pins
+    type Active;
 
     /// DESCRIPTION
     /// program the timer period from `config` and return the running timebase
