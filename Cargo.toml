@@ -37,7 +37,7 @@ members = [
 
 # Shared package metadata -> members opt in with `field.workspace = true`
 [workspace.package]
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 
 [workspace.dependencies]
